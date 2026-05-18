@@ -216,3 +216,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- CẤU HÌNH BỔ SUNG DÀNH RIÊNG CHO DỰ ÁN SĂN MÂY ---
+
+# Chặn toàn bộ file dữ liệu thô và đã xử lý (tránh làm tràn bộ nhớ GitHub)
+data/*
+!data/**/.gitkeep
+
+# Chặn các file chứa mô hình AI sau khi huấn luyện xong (dung lượng cực lớn)
+*.pkl
+*.h5
+*.pth
+*.onnx
