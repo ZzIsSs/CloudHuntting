@@ -1,0 +1,358 @@
+[
+  {
+    "id": "pl001",
+    "name": "Cà phê Mây Trắng",
+    "category": "cafe",
+    "lat": 21.0285, "lon": 105.8542,
+    "address": "12 Đường Láng, Đống Đa, Hà Nội",
+    "province": "Hà Nội",
+    "phone": "024-3823-1234",
+    "avg_rating": 4.5, "review_count": 128,
+    "price_level": 2,
+    "is_active": true, "is_bookable": true,
+    "amenities": ["wifi", "parking", "mountain_view"],
+    "opening_hours": {
+      "mon": ["06:00","22:00"], "tue": ["06:00","22:00"],
+      "wed": ["06:00","22:00"], "thu": ["06:00","22:00"],
+      "fri": ["06:00","23:00"], "sat": ["06:00","23:00"],
+      "sun": ["07:00","21:00"]
+    },
+    "photos": [
+      {"url": "https://picsum.photos/seed/pl001/800/600", "is_primary": true, "caption": "View sân thượng"}
+    ]
+  },
+  {
+    "id": "pl002",
+    "name": "Homestay Sương Mai",
+    "category": "homestay",
+    "lat": 21.0412, "lon": 105.8301,
+    "address": "45 Ngõ 68, Cầu Giấy, Hà Nội",
+    "province": "Hà Nội",
+    "phone": "024-3756-5678",
+    "avg_rating": 4.8, "review_count": 76,
+    "price_level": 3,
+    "is_active": true, "is_bookable": true,
+    "amenities": ["wifi", "parking", "breakfast", "mountain_view"],
+    "opening_hours": {
+      "mon": ["00:00","23:59"], "tue": ["00:00","23:59"],
+      "wed": ["00:00","23:59"], "thu": ["00:00","23:59"],
+      "fri": ["00:00","23:59"], "sat": ["00:00","23:59"],
+      "sun": ["00:00","23:59"]
+    },
+    "photos": [
+      {"url": "https://picsum.photos/seed/pl002/800/600", "is_primary": true, "caption": "Phòng view núi"}
+    ]
+  },
+  {
+    "id": "pl003",
+    "name": "Nhà hàng Đỉnh Mây",
+    "category": "restaurant",
+    "lat": 20.9876, "lon": 105.8765,
+    "address": "89 Trần Huy Liệu, Đống Đa, Hà Nội",
+    "province": "Hà Nội",
+    "phone": "024-3921-9012",
+    "avg_rating": 4.2, "review_count": 203,
+    "price_level": 3,
+    "is_active": true, "is_bookable": true,
+    "amenities": ["parking", "private_room", "cloud_view"],
+    "opening_hours": {
+      "mon": ["10:00","22:00"], "tue": ["10:00","22:00"],
+      "wed": ["10:00","22:00"], "thu": ["10:00","22:00"],
+      "fri": ["10:00","23:00"], "sat": ["10:00","23:00"],
+      "sun": null
+    },
+    "photos": [
+      {"url": "https://picsum.photos/seed/pl003/800/600", "is_primary": true, "caption": "Sảnh ngoài trời"}
+    ]
+  },
+  {
+    "id": "pl004",
+    "name": "Hotel Cloud Nine",
+    "category": "hotel",
+    "lat": 21.0512, "lon": 105.8234,
+    "address": "156 Kim Mã, Ba Đình, Hà Nội",
+    "province": "Hà Nội",
+    "phone": "024-3845-3456",
+    "avg_rating": 4.6, "review_count": 312,
+    "price_level": 4,
+    "is_active": true, "is_bookable": true,
+    "amenities": ["wifi", "parking", "pool", "gym", "breakfast", "mountain_view"],
+    "opening_hours": {
+      "mon": ["00:00","23:59"], "tue": ["00:00","23:59"],
+      "wed": ["00:00","23:59"], "thu": ["00:00","23:59"],
+      "fri": ["00:00","23:59"], "sat": ["00:00","23:59"],
+      "sun": ["00:00","23:59"]
+    },
+    "photos": [
+      {"url": "https://picsum.photos/seed/pl004/800/600", "is_primary": true, "caption": "Rooftop pool"},
+      {"url": "https://picsum.photos/seed/pl004b/800/600", "is_primary": false, "caption": "Lobby"}
+    ]
+  },
+  {
+    "id": "pl005",
+    "name": "Camping Sao Trời",
+    "category": "camping",
+    "lat": 21.0654, "lon": 105.7923,
+    "address": "Khu vực Hồ Tây, Tây Hồ, Hà Nội",
+    "province": "Hà Nội",
+    "phone": "098-765-4321",
+    "avg_rating": 4.9, "review_count": 45,
+    "price_level": 1,
+    "is_active": true, "is_bookable": false,
+    "amenities": ["bonfire", "stargazing", "cloud_view"],
+    "opening_hours": {
+      "fri": ["16:00","23:59"], "sat": ["00:00","23:59"], "sun": ["00:00","14:00"]
+    },
+    "photos": [
+      {"url": "https://picsum.photos/seed/pl005/800/600", "is_primary": true, "caption": "Lều trại dưới sao"}
+    ]
+  },
+  {
+    "id": "pl006",
+    "name": "Tiệm Cà Phê Bình Minh Ơi",
+    "category": "cafe",
+    "lat": 11.9404,
+    "lon": 108.4583,
+    "address": "89 Hoàng Hoa Thám, Phường 10, Đà Lạt",
+    "province": "Lâm Đồng",
+    "phone": "0263-382-1111",
+    "avg_rating": 4.8,
+    "review_count": 512,
+    "price_level": 2,
+    "is_active": true,
+    "is_bookable": true,
+    "amenities": ["wifi", "parking", "sunrise_view", "cloud_view"],
+    "opening_hours": {
+      "mon": ["04:30", "22:00"],
+      "tue": ["04:30", "22:00"],
+      "wed": ["04:30", "22:00"],
+      "thu": ["04:30", "22:00"],
+      "fri": ["04:30", "23:00"],
+      "sat": ["04:30", "23:00"],
+      "sun": ["04:30", "22:00"]
+    },
+    "photos": [
+      {
+        "url": "https://picsum.photos/seed/dalat001/800/600",
+        "is_primary": true,
+        "caption": "Săn mây lúc bình minh"
+      }
+    ]
+  },
+  {
+    "id": "pl007",
+    "name": "Đồi Mây Horizon",
+    "category": "camping",
+    "lat": 11.9462,
+    "lon": 108.4415,
+    "address": "Đường Ankroet, Phường 7, Đà Lạt",
+    "province": "Lâm Đồng",
+    "phone": "090-123-4567",
+    "avg_rating": 4.9,
+    "review_count": 187,
+    "price_level": 1,
+    "is_active": true,
+    "is_bookable": true,
+    "amenities": ["campfire", "cloud_view", "stargazing", "parking"],
+    "opening_hours": {
+      "fri": ["16:00", "23:59"],
+      "sat": ["00:00", "23:59"],
+      "sun": ["00:00", "14:00"]
+    },
+    "photos": [
+      {
+        "url": "https://picsum.photos/seed/dalat002/800/600",
+        "is_primary": true,
+        "caption": "Biển mây sáng sớm"
+      }
+    ]
+  },
+  {
+    "id": "pl008",
+    "name": "Cloud Valley Homestay",
+    "category": "homestay",
+    "lat": 11.9321,
+    "lon": 108.4659,
+    "address": "12B Hùng Vương, Phường 11, Đà Lạt",
+    "province": "Lâm Đồng",
+    "phone": "0263-355-7788",
+    "avg_rating": 4.7,
+    "review_count": 298,
+    "price_level": 3,
+    "is_active": true,
+    "is_bookable": true,
+    "amenities": ["wifi", "breakfast", "mountain_view", "cloud_view"],
+    "opening_hours": {
+      "mon": ["00:00", "23:59"],
+      "tue": ["00:00", "23:59"],
+      "wed": ["00:00", "23:59"],
+      "thu": ["00:00", "23:59"],
+      "fri": ["00:00", "23:59"],
+      "sat": ["00:00", "23:59"],
+      "sun": ["00:00", "23:59"]
+    },
+    "photos": [
+      {
+        "url": "https://picsum.photos/seed/dalat003/800/600",
+        "is_primary": true,
+        "caption": "Ban công nhìn xuống thung lũng mây"
+      }
+    ]
+  },
+  {
+    "id": "pl009",
+    "name": "Lululola Chill Cafe",
+    "category": "cafe",
+    "lat": 11.9568,
+    "lon": 108.4297,
+    "address": "Dốc Số 7, Trại Mát, Đà Lạt",
+    "province": "Lâm Đồng",
+    "phone": "0263-388-6868",
+    "avg_rating": 4.6,
+    "review_count": 843,
+    "price_level": 2,
+    "is_active": true,
+    "is_bookable": true,
+    "amenities": ["wifi", "live_music", "cloud_view", "parking"],
+    "opening_hours": {
+      "mon": ["05:00", "22:00"],
+      "tue": ["05:00", "22:00"],
+      "wed": ["05:00", "22:00"],
+      "thu": ["05:00", "22:00"],
+      "fri": ["05:00", "23:00"],
+      "sat": ["05:00", "23:00"],
+      "sun": ["05:00", "22:00"]
+    },
+    "photos": [
+      {
+        "url": "https://picsum.photos/seed/dalat004/800/600",
+        "is_primary": true,
+        "caption": "View đồi và biển mây"
+      }
+    ]
+  },
+  {
+    "id": "pl010",
+    "name": "Đỉnh Hòn Bồ Camping",
+    "category": "camping",
+    "lat": 11.9782,
+    "lon": 108.4741,
+    "address": "Khu vực Hòn Bồ, Đà Lạt",
+    "province": "Lâm Đồng",
+    "phone": "091-456-8888",
+    "avg_rating": 4.9,
+    "review_count": 126,
+    "price_level": 1,
+    "is_active": true,
+    "is_bookable": false,
+    "amenities": ["cloud_view", "campfire", "stargazing", "sunrise_view"],
+    "opening_hours": {
+      "fri": ["15:00", "23:59"],
+      "sat": ["00:00", "23:59"],
+      "sun": ["00:00", "12:00"]
+    },
+    "photos": [
+      {
+        "url": "https://picsum.photos/seed/dalat005/800/600",
+        "is_primary": true,
+        "caption": "Săn mây trên đỉnh Hòn Bồ"
+      }
+    ]
+  },
+  {
+    "id": "pl011",
+    "name": "The Seen House",
+    "category": "cafe",
+    "lat": 11.9215,
+    "lon": 108.4501,
+    "address": "Ven Hồ Tuyền Lâm, Đà Lạt",
+    "province": "Lâm Đồng",
+    "phone": "0263-399-9999",
+    "avg_rating": 4.7,
+    "review_count": 654,
+    "price_level": 3,
+    "is_active": true,
+    "is_bookable": true,
+    "amenities": ["wifi", "lake_view", "cloud_view", "breakfast"],
+    "opening_hours": {
+      "mon": ["06:00", "22:00"],
+      "tue": ["06:00", "22:00"],
+      "wed": ["06:00", "22:00"],
+      "thu": ["06:00", "22:00"],
+      "fri": ["06:00", "23:00"],
+      "sat": ["06:00", "23:00"],
+      "sun": ["06:00", "22:00"]
+    },
+    "photos": [
+      {
+        "url": "https://picsum.photos/seed/dalat006/800/600",
+        "is_primary": true,
+        "caption": "Mặt hồ phủ sương sớm"
+      }
+    ]
+  },
+  {
+    "id": "pl012",
+    "name": "Cloud Nine Hotel Đà Lạt",
+    "category": "hotel",
+    "lat": 11.9449,
+    "lon": 108.4382,
+    "address": "25 Mai Anh Đào, Phường 8, Đà Lạt",
+    "province": "Lâm Đồng",
+    "phone": "0263-377-8899",
+    "avg_rating": 4.5,
+    "review_count": 421,
+    "price_level": 4,
+    "is_active": true,
+    "is_bookable": true,
+    "amenities": ["wifi", "pool", "gym", "cloud_view", "parking"],
+    "opening_hours": {
+      "mon": ["00:00", "23:59"],
+      "tue": ["00:00", "23:59"],
+      "wed": ["00:00", "23:59"],
+      "thu": ["00:00", "23:59"],
+      "fri": ["00:00", "23:59"],
+      "sat": ["00:00", "23:59"],
+      "sun": ["00:00", "23:59"]
+    },
+    "photos": [
+      {
+        "url": "https://picsum.photos/seed/dalat007/800/600",
+        "is_primary": true,
+        "caption": "Khách sạn trên đồi mây"
+      }
+    ]
+  },
+  {
+    "id": "pl013",
+    "name": "Mây Lang Thang Coffee",
+    "category": "cafe",
+    "lat": 11.9654,
+    "lon": 108.4478,
+    "address": "7B Trại Mát, Đà Lạt",
+    "province": "Lâm Đồng",
+    "phone": "0263-344-5566",
+    "avg_rating": 4.8,
+    "review_count": 932,
+    "price_level": 2,
+    "is_active": true,
+    "is_bookable": true,
+    "amenities": ["wifi", "live_music", "sunrise_view", "cloud_view"],
+    "opening_hours": {
+      "mon": ["04:30", "22:00"],
+      "tue": ["04:30", "22:00"],
+      "wed": ["04:30", "22:00"],
+      "thu": ["04:30", "22:00"],
+      "fri": ["04:30", "23:00"],
+      "sat": ["04:30", "23:00"],
+      "sun": ["04:30", "22:00"]
+    },
+    "photos": [
+      {
+        "url": "https://picsum.photos/seed/dalat008/800/600",
+        "is_primary": true,
+        "caption": "View săn mây Trại Mát"
+      }
+    ]
+  }
+]
