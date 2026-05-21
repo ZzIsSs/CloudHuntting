@@ -10,15 +10,15 @@ router = APIRouter()
 
 def send_log_to_service_5(data: Dict[str, Any]):
     """
-    Module 4: Tương tác hệ thống (Gửi dữ liệu log về Service 5).
-    Giả lập gửi HTTP Request sang S5.
     """
-    # Service 5 dự kiến chạy ở port nào đó, ví dụ 8005. Hiện tại ta chỉ in log.
-    print(f"🔁 [Giả lập] Đang gửi log thống kê về Service 5: Tọa độ ({data['lat']}, {data['lon']}) - Tỷ lệ: {data['probability']}%")
-    # try:
-    #     requests.post("http://localhost:8005/api/statistics/log", json=data, timeout=2)
-    # except Exception as e:
-    #     print(f"Không thể gửi log sang S5: {e}")
+    Module 4: Tương tác hệ thống (Gửi dữ liệu log về Service 5).
+    """
+    # Gọi thẳng sang Service 5
+    print(f"🔁 Đang gửi log thống kê về Service 5: Tọa độ ({data['lat']}, {data['lon']}) - Tỷ lệ: {data['probability']}%")
+    try:
+        requests.post("http://127.0.0.1:8005/api/s5/log", json=data, timeout=2)
+    except Exception as e:
+        print(f"Không thể gửi log sang S5: {e}")
 
 @router.post("/predict", response_model=CloudHuntingResponse)
 def predict_cloud_metrics(request: CloudHuntingRequest):
@@ -49,8 +49,9 @@ def predict_cloud_metrics(request: CloudHuntingRequest):
         data_source=weather_data.get("source", "Unknown")
     )
     
-    # Gọi hàm giả lập sang S5
+    # Gửi log sang S5
     send_log_to_service_5({
+        "location_name": request.location_name,
         "lat": lat,
         "lon": lon,
         "probability": probability,

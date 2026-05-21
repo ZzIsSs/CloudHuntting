@@ -5,6 +5,9 @@ class CloudHuntingRequest(BaseModel):
     Module 1: Tiếp nhận và kiểm tra dữ liệu đầu vào.
     Model này dùng để validate tọa độ và các thông số phụ do người dùng cung cấp.
     """
+    # Tên địa điểm người dùng chọn (Dùng để gửi sang S5 thống kê)
+    location_name: str = Field(..., description="Tên địa điểm săn mây (VD: Đồi chè Cầu Đất)")
+    
     # Vĩ độ (Latitude) giới hạn trong khu vực Đà Lạt (khoảng 11.7 đến 12.1)
     lat: float = Field(..., ge=11.7, le=12.1, description="Vĩ độ của điểm cần săn mây (chỉ hỗ trợ Đà Lạt)")
     
