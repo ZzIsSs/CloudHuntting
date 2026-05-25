@@ -47,11 +47,4 @@ Sau khi chạy Server, truy cập vào giao diện Swagger UI tại:
 
 Bạn có thể test trực tiếp các endpoints `/recommend`, `/plan-b`, `/notifications` ngay trên giao diện này bằng cách nhập JSON request.
 
-### 4. Chạy kịch bản giả lập (Test Simulation)
-Để kiểm tra logic cốt lõi (thuật toán chấm điểm, sinh lịch trình) mà không cần gọi API hay gửi HTTP request phức tạp, bạn có thể chạy file test giả lập:
-```bash
-python src/s6_recommend/test_simulation.py
-```
-**File giả lập bao gồm 2 kịch bản chính:**
-- **Kịch bản 1 (Thời tiết tốt)**: Hệ thống nhận được báo cáo thời tiết 85% mây. Hệ thống sẽ tự động tìm điểm đến tốt nhất và trả về một lịch trình lý tưởng.
-- **Kịch bản 2 (Thời tiết xấu - Plan B)**: Giả lập thời tiết rất xấu (20% mây). Người dùng đang đi thì gặp sự cố. Hệ thống sẽ không tìm thấy điểm săn mây thay thế và sẽ kích hoạt lịch trình "dừng chân khẩn cấp" tại một quán cafe an toàn.
+
