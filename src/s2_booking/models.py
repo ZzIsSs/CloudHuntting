@@ -1,8 +1,14 @@
 # src/s2_booking/models.py
+"Định nghĩa các model SQLAlchemy cho S2: Place và Booking."
 
-from dataclasses import dataclass, field
-from typing import Optional
+from sqlalchemy import (
+    Column, String, Float, Integer,
+    Boolean, Text, Enum as SAEnum,
+    DateTime, ForeignKey
+)
+from sqlalchemy.sql import func
 import enum
+from .database import Base
 
 
 class BookingStatus(str, enum.Enum):
@@ -14,49 +20,69 @@ class BookingStatus(str, enum.Enum):
 
 
 class PlaceCategory(str, enum.Enum):
-    CAFE      = "cafe"
+    CAFE       = "cafe"
     RESTAURANT = "restaurant"
-    HOMESTAY  = "homestay"
-    HOTEL     = "hotel"
-    CAMPING   = "camping"
+    HOMESTAY   = "homestay"
+    HOTEL      = "hotel"
+    CAMPING    = "camping"
 
 
-@dataclass
-class Place:
-    """Địa điểm (quán, homestay...) gần điểm săn mây."""
-    id: str
-    name: str
-    category: str            # PlaceCategory
-    lat: float
-    lon: float
-    address: str
-    province: str
-    avg_rating: float
-    review_count: int
-    price_level: int         # 1=rẻ → 4=đắt
-    is_active: bool
-    is_bookable: bool
-    amenities: list          # ["wifi", "parking", "mountain_view"]
-    opening_hours: dict      # {"mon": ["07:00","22:00"], "sun": null}
-    photos: list             # [{"url": "...", "is_primary": true}]
-    phone: Optional[str]     = None
-    distance_km: float       = 0.0   # tính động, không lưu trong JSON
+class Place(Base):
+    """
+    Địa điểm gần điểm săn mây: quán cà phê, homestay, nhà hàng...
+    Dữ liệu lấy từ OpenStreetMap qua fetch_places.py.
+    """
+    __tablename__ = "places"
+
+    id           = Column(String(20),  primary_key=True)
+    name         = Column(String(255), nullable=False)
+    category     = Column(SAEnum(PlaceCategory), nullable=False)
+    lat          = Column(Float,   nullable=False)
+    lon          = Column(Float,   nullable=False)
+    address      = Column(Text,    default="")
+    province     = Column(String(100), default="Lâm Đồng")
+    phone        = Column(String(30),  nullable=True)
+    avg_rating   = Column(Float,   default=4.0)
+    review_count = Column(Integer, default=0)
+    price_level  = Column(Integer, default=2)   # 1=rẻ → 4=đắt
+    is_active    = Column(Boolean, default=True)
+    is_bookable  = Column(Boolean, default=True)
+
+    # SQLite không có JSON column → lưu dưới dạng Text (JSON string)
+    # Khi đọc ra sẽ json.loads(), khi ghi vào sẽ json.dumps()
+    amenities_json     = Column(Text, default="[]")
+    opening_hours_json = Column(Text, default="{}")
+    photos_json        = Column(Text, default="[]")
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-@dataclass
-class Booking:
-    """Thông tin một lượt đặt chỗ."""
-    id: str
-    idempotency_key: str     # client tự sinh UUID, ngăn double-booking khi retry
-    user_id: int             # int — khớp với int(sub) từ JWT của S3
-    place_id: str
-    booking_date: str        # "YYYY-MM-DD"
-    start_time: str          # "HH:MM"
-    end_time: str            # "HH:MM"
-    party_size: int
-    status: str              # BookingStatus
-    created_at: str
-    total_price: Optional[float] = None
-    notes: Optional[str]         = None
-    partner_ref: Optional[str]   = None
-    cancel_reason: Optional[str] = None
+class Booking(Base):
+    """
+    Lịch đặt chỗ của user tại một địa điểm.
+
+    Lưu ý: user_id là Integer khớp với User.id bên S3.
+    KHÔNG dùng ForeignKey sang bảng users vì S2 không có bảng đó
+    (microservice độc lập — loose coupling).
+    """
+    __tablename__ = "bookings"
+
+    id              = Column(String(20), primary_key=True)
+    idempotency_key = Column(String(64), unique=True, nullable=False, index=True)
+    user_id         = Column(Integer, nullable=False, index=True)
+    place_id        = Column(String(20), ForeignKey("places.id"), nullable=False)
+    booking_date    = Column(String(10), nullable=False)  # "YYYY-MM-DD"
+    start_time      = Column(String(5),  nullable=False)  # "HH:MM"
+    end_time        = Column(String(5),  nullable=False)  # "HH:MM"
+    party_size      = Column(Integer, nullable=False)
+    status          = Column(
+        SAEnum(BookingStatus),
+        default=BookingStatus.PENDING,
+        nullable=False
+    )
+    total_price   = Column(Float,   nullable=True)
+    notes         = Column(Text,    nullable=True)
+    partner_ref   = Column(String(100), nullable=True)
+    cancel_reason = Column(Text,    nullable=True)
+    created_at    = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at    = Column(DateTime(timezone=True), onupdate=func.now())

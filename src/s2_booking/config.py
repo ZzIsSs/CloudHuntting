@@ -4,11 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# JWT — đọc từ .env, phải khớp hệt với S3
 JWT_SECRET    = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
-
-# Toggle: True khi S3 chưa chạy, False khi tích hợp thật
+DATABASE_URL = os.getenv("S2_DATABASE_URL", "sqlite:///./s2_booking.db")
 MOCK_AUTH = os.getenv("MOCK_AUTH", "true").lower() == "true"
 
 # Quy tắc đặt chỗ

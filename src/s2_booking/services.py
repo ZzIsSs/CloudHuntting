@@ -1,103 +1,93 @@
 # src/s2_booking/services.py
-"""
-Toàn bộ logic nghiệp vụ S2.
-N.1-N.2: đọc/ghi JSON.
-N.3+   : thay _load_places() và _load_bookings() bằng DB query.
-         Interface hàm giữ nguyên — routes.py không cần sửa.
-"""
 import json
+import math
 import uuid
-from pathlib import Path
+from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
 from .models import Place, Booking, BookingStatus
 from .schemas import BookingCreate, BookingCancel
 
-DATA_DIR = Path(__file__).parent / "data"
+
+# ── Geo helper ────────────────────────────────────────────────────────────────
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R    = 6371.0
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dp   = math.radians(lat2 - lat1)
+    dl   = math.radians(lon2 - lon1)
+    a    = math.sin(dp/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dl/2)**2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
-# ── Helpers đọc/ghi JSON (xóa khi có DB) ─────────────────────────────────────
-
-def _load_places() -> list[Place]:
-    raw = json.loads((DATA_DIR / "mock_places.json").read_text(encoding="utf-8"))
-    return [Place(**p) for p in raw]
-
-
-def _load_bookings() -> list[Booking]:
-    path = DATA_DIR / "mock_bookings.json"
-    if not path.exists():
-        return []
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    return [Booking(**b) for b in raw]
-
-
-def _save_bookings(bookings: list[Booking]) -> None:
-    data = [b.__dict__ for b in bookings]
-    (DATA_DIR / "mock_bookings.json").write_text(
-        json.dumps(data, ensure_ascii=False, indent=2),
-        encoding="utf-8"
-    )
+def _to_place_out_data(place: Place, distance_km: float) -> dict:
+    """Chuyển ORM Place → dict để tạo PlaceOut schema."""
+    return {
+        "id":           place.id,
+        "name":         place.name,
+        "category":     place.category,
+        "address":      place.address or "",
+        "province":     place.province or "Lâm Đồng",
+        "phone":        place.phone,
+        "avg_rating":   place.avg_rating,
+        "review_count": place.review_count,
+        "price_level":  place.price_level,
+        "is_bookable":  place.is_bookable,
+        "amenities":    json.loads(place.amenities_json  or "[]"),
+        "photos":       json.loads(place.photos_json     or "[]"),
+        "distance_km":  distance_km,
+    }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PLACE SERVICE
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Khoảng cách giữa 2 tọa độ (km). N.3: thay bằng ST_Distance PostGIS."""
-    import math
-    R = 6371.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dp = math.radians(lat2 - lat1)
-    dl = math.radians(lon2 - lon1)
-    a = math.sin(dp/2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dl/2)**2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-
 def get_nearby_places(
-    lat: float,
-    lon: float,
-    radius_km: float        = 5.0,
-    category: str | None    = None,
-    price_level: int | None = None,
-    amenities: list[str] | None = None,
-    page: int               = 1,
-    per_page: int           = 20,
+    db:          Session,
+    lat:         float,
+    lon:         float,
+    radius_km:   float            = 5.0,
+    category:    str | None       = None,
+    price_level: int | None       = None,
+    amenities:   list[str] | None = None,
+    page:        int              = 1,
+    per_page:    int              = 20,
 ) -> dict:
-    """
-    Tìm địa điểm trong bán kính, sắp xếp theo composite score.
-    Score = 60% khoảng cách gần + 40% rating cao.
-    """
+    query = db.query(Place).filter(Place.is_active == True)
+    if category:
+        query = query.filter(Place.category == category)
+    if price_level:
+        query = query.filter(Place.price_level == price_level)
+
+    all_places = query.all()
+
     results = []
-    for p in _load_places():
-        if not p.is_active:
-            continue
+    for p in all_places:
         dist = _haversine_km(lat, lon, p.lat, p.lon)
         if dist > radius_km:
             continue
-        if category and p.category != category:
+        parsed_amenities = json.loads(p.amenities_json or "[]")
+        if amenities and not all(a in parsed_amenities for a in amenities):
             continue
-        if price_level and p.price_level != price_level:
-            continue
-        if amenities and not all(a in p.amenities for a in amenities):
-            continue
-        p.distance_km = round(dist, 3)
-        results.append(p)
+        results.append((p, round(dist, 3)))
 
+    # Composite score: 60% gần + 40% rating cao
     results.sort(
-        key=lambda p: (
-            (1.0 - min(p.distance_km / radius_km, 1.0)) * 0.6
-            + (p.avg_rating / 5.0) * 0.4
+        key=lambda x: (
+            (1.0 - min(x[1] / radius_km, 1.0)) * 0.6
+            + (x[0].avg_rating / 5.0) * 0.4
         ),
         reverse=True
     )
 
-    total  = len(results)
-    start  = (page - 1) * per_page
-    paged  = results[start: start + per_page]
+    total = len(results)
+    start = (page - 1) * per_page
+    paged = results[start: start + per_page]
 
     return {
-        "places":   paged,
+        "places":   [_to_place_out_data(p, d) for p, d in paged],
         "page":     page,
         "per_page": per_page,
         "total":    total,
@@ -105,30 +95,26 @@ def get_nearby_places(
     }
 
 
-def get_place_by_id(place_id: str) -> Place | None:
-    return next((p for p in _load_places() if p.id == place_id), None)
+def get_place_by_id(db: Session, place_id: str) -> Place | None:
+    return db.query(Place).filter(Place.id == place_id).first()
 
 
-def get_place_availability(place_id: str, date_str: str) -> dict:
-    """
-    Trả về slot còn trống trong ngày.
-    Tất cả slot cố định trừ đi slot có booking active.
-    """
-    all_slots = [
-        "07:00", "08:00", "09:00", "10:00", "11:00",
-        "14:00", "15:00", "16:00", "17:00", "19:00", "20:00"
+def get_place_availability(db: Session, place_id: str, date_str: str) -> dict:
+    ALL_SLOTS = [
+        "07:00","08:00","09:00","10:00","11:00",
+        "14:00","15:00","16:00","17:00","19:00","20:00",
     ]
-    booked_starts = {
-        b.start_time for b in _load_bookings()
-        if b.place_id    == place_id
-        and b.booking_date == date_str
-        and b.status not in (BookingStatus.CANCELLED, BookingStatus.FAILED)
-    }
+    booked_rows = db.query(Booking.start_time).filter(
+        Booking.place_id     == place_id,
+        Booking.booking_date == date_str,
+        Booking.status.notin_([BookingStatus.CANCELLED, BookingStatus.FAILED])
+    ).all()
+    booked_starts = {row.start_time for row in booked_rows}
     return {
         "place_id":        place_id,
         "date":            date_str,
-        "available_slots": [s for s in all_slots if s not in booked_starts],
-        "booked_slots":    list(booked_starts),
+        "available_slots": [s for s in ALL_SLOTS if s not in booked_starts],
+        "booked_slots":    sorted(booked_starts),
     }
 
 
@@ -137,112 +123,94 @@ def get_place_availability(place_id: str, date_str: str) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def create_booking(
-    user_id: int,
-    data: BookingCreate,
+    db:              Session,
+    user_id:         int,
+    data:            BookingCreate,
     idempotency_key: str,
 ) -> tuple[Booking, bool]:
-    """
-    Tạo booking mới.
-    Trả về (booking, is_new).
-    is_new=False → idempotent repeat, caller trả HTTP 200.
-    is_new=True  → booking mới, caller trả HTTP 201.
-    """
-    bookings = _load_bookings()
-
-    # ── 1. Idempotency check ──────────────────────────────────────────────────
-    existing = next((b for b in bookings if b.idempotency_key == idempotency_key), None)
+    # 1. Idempotency — trả về booking cũ nếu key đã tồn tại
+    existing = db.query(Booking).filter(
+        Booking.idempotency_key == idempotency_key
+    ).first()
     if existing:
         return existing, False
 
-    # ── 2. Place tồn tại? ─────────────────────────────────────────────────────
-    if not get_place_by_id(data.place_id):
+    # 2. Place tồn tại?
+    place = get_place_by_id(db, data.place_id)
+    if not place:
         from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail=f"Không tìm thấy địa điểm id={data.place_id}")
+        raise HTTPException(404, f"Không tìm thấy địa điểm id={data.place_id}")
 
-    # ── 3. Conflict: cùng place + ngày + giờ ─────────────────────────────────
-    conflict = any(
-        b for b in bookings
-        if b.place_id     == data.place_id
-        and b.booking_date == str(data.booking_date)
-        and b.start_time   == data.start_time
-        and b.status not in (BookingStatus.CANCELLED, BookingStatus.FAILED)
-    )
+    # 3. Place có cho đặt không?
+    if not place.is_bookable:
+        from fastapi import HTTPException
+        raise HTTPException(422, f"'{place.name}' không hỗ trợ đặt chỗ trước")
+
+    # 4. Conflict slot
+    conflict = db.query(Booking).filter(
+        Booking.place_id     == data.place_id,
+        Booking.booking_date == str(data.booking_date),
+        Booking.start_time   == data.start_time,
+        Booking.status.notin_([BookingStatus.CANCELLED, BookingStatus.FAILED])
+    ).first()
     if conflict:
         from fastapi import HTTPException
-        raise HTTPException(status_code=409, detail="Khung giờ này đã được đặt, vui lòng chọn giờ khác")
+        raise HTTPException(409, "Khung giờ này đã được đặt, vui lòng chọn giờ khác")
 
-    # ── 4. Tạo mới ───────────────────────────────────────────────────────────
+    # 5. Tạo booking mới
     new_booking = Booking(
-        id               = f"bk-{str(uuid.uuid4())[:8]}",
-        idempotency_key  = idempotency_key,
-        user_id          = user_id,
-        place_id         = data.place_id,
-        booking_date     = str(data.booking_date),
-        start_time       = data.start_time,
-        end_time         = data.end_time,
-        party_size       = data.party_size,
-        notes            = data.notes,
-        status           = BookingStatus.PENDING,
-        created_at       = datetime.now(timezone.utc).isoformat(),
+        id              = f"bk-{str(uuid.uuid4())[:8]}",
+        idempotency_key = idempotency_key,
+        user_id         = user_id,
+        place_id        = data.place_id,
+        booking_date    = str(data.booking_date),
+        start_time      = data.start_time,
+        end_time        = data.end_time,
+        party_size      = data.party_size,
+        notes           = data.notes,
+        status          = BookingStatus.PENDING,
     )
-    bookings.append(new_booking)
-    _save_bookings(bookings)
+    db.add(new_booking)
+    db.commit()
+    db.refresh(new_booking)
     return new_booking, True
 
 
 def list_bookings(
-    user_id: int,
-    role: str,
+    db:            Session,
+    user_id:       int,
+    role:          str,
     status_filter: str | None = None,
 ) -> list[Booking]:
-    """
-    user  → chỉ thấy booking của mình.
-    admin → thấy tất cả.
-    """
-    all_bookings = _load_bookings()
-    if role == "admin":
-        result = all_bookings
-    else:
-        result = [b for b in all_bookings if b.user_id == user_id]
-
+    query = db.query(Booking)
+    if role != "admin":
+        query = query.filter(Booking.user_id == user_id)
     if status_filter:
-        result = [b for b in result if b.status == status_filter]
-    return result
+        query = query.filter(Booking.status == status_filter)
+    return query.order_by(Booking.created_at.desc()).all()
 
 
-def get_booking_by_id(booking_id: str) -> Booking | None:
-    return next((b for b in _load_bookings() if b.id == booking_id), None)
+def get_booking_by_id(db: Session, booking_id: str) -> Booking | None:
+    return db.query(Booking).filter(Booking.id == booking_id).first()
 
 
 def cancel_booking(
+    db:         Session,
     booking_id: str,
-    user_id: int,
-    role: str,
-    data: BookingCancel,
+    user_id:    int,
+    role:       str,
+    data:       BookingCancel,
 ) -> Booking:
-    """
-    Hủy booking.
-    admin hủy được mọi booking.
-    user chỉ hủy được của mình và khi status còn pending/confirmed.
-    """
     from fastapi import HTTPException
-
-    bookings = _load_bookings()
-    booking  = next((b for b in bookings if b.id == booking_id), None)
-
+    booking = get_booking_by_id(db, booking_id)
     if not booking:
-        raise HTTPException(status_code=404, detail="Không tìm thấy booking")
-
+        raise HTTPException(404, "Không tìm thấy booking")
     if role != "admin" and booking.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Không có quyền hủy booking này")
-
-    if booking.status in (BookingStatus.CANCELLED, BookingStatus.FAILED, BookingStatus.COMPLETED):
-        raise HTTPException(
-            status_code=409,
-            detail=f"Không thể hủy booking đang ở trạng thái: {booking.status}"
-        )
-
+        raise HTTPException(403, "Không có quyền hủy booking này")
+    if booking.status in (BookingStatus.CANCELLED, BookingStatus.COMPLETED, BookingStatus.FAILED):
+        raise HTTPException(409, f"Không thể hủy booking đang ở trạng thái: {booking.status}")
     booking.status        = BookingStatus.CANCELLED
     booking.cancel_reason = data.reason
-    _save_bookings(bookings)
+    db.commit()
+    db.refresh(booking)
     return booking

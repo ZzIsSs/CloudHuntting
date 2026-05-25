@@ -1,11 +1,10 @@
 # src/s2_booking/schemas.py
 from pydantic import BaseModel, computed_field, field_validator, model_validator
 from typing import Optional
-from datetime import date
+from datetime import date, datetime
 import enum
 
 
-# ── Enums dùng chung trong schema ────────────────────────────────────────────
 class PlaceCategoryEnum(str, enum.Enum):
     cafe       = "cafe"
     restaurant = "restaurant"
@@ -19,11 +18,12 @@ class PlaceCategoryEnum(str, enum.Enum):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class PlaceOut(BaseModel):
-    """Dữ liệu địa điểm trả về client."""
     id: str
     name: str
     category: str
     address: str
+    province: str
+    phone: Optional[str]
     avg_rating: float
     review_count: int
     price_level: int
@@ -32,7 +32,6 @@ class PlaceOut(BaseModel):
     photos: list[dict]
     distance_km: float
 
-    # Tính tự động từ distance_km — không lưu DB
     @computed_field
     @property
     def distance_label(self) -> str:
@@ -40,7 +39,6 @@ class PlaceOut(BaseModel):
             return f"{int(self.distance_km * 1000)}m"
         return f"{self.distance_km:.1f}km"
 
-    # Tự lấy ảnh chính từ mảng photos
     @computed_field
     @property
     def primary_photo_url(self) -> Optional[str]:
@@ -53,7 +51,6 @@ class PlaceOut(BaseModel):
 
 
 class NearbyResponse(BaseModel):
-    """Response phân trang cho GET /places/nearby."""
     places: list[PlaceOut]
     page: int
     per_page: int
@@ -62,7 +59,6 @@ class NearbyResponse(BaseModel):
 
 
 class AvailabilityResponse(BaseModel):
-    """Slot còn trống / đã bị đặt trong một ngày."""
     place_id: str
     date: str
     available_slots: list[str]
@@ -74,11 +70,10 @@ class AvailabilityResponse(BaseModel):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class BookingCreate(BaseModel):
-    """Body request khi tạo booking — POST /bookings."""
     place_id: str
     booking_date: date
-    start_time: str   # "HH:MM"
-    end_time: str     # "HH:MM"
+    start_time: str
+    end_time: str
     party_size: int
     notes: Optional[str] = None
 
@@ -96,15 +91,22 @@ class BookingCreate(BaseModel):
             raise ValueError("Số người phải trong khoảng 1–100")
         return v
 
+    @field_validator("start_time", "end_time")
+    @classmethod
+    def valid_time_format(cls, v):
+        try:
+            datetime.strptime(v, "%H:%M")
+        except ValueError:
+            raise ValueError("Định dạng giờ phải là HH:MM, ví dụ: 09:00")
+        return v
+
     @model_validator(mode="after")
     def end_after_start(self):
-        from datetime import datetime
-        fmt = "%H:%M"
         try:
-            s = datetime.strptime(self.start_time, fmt)
-            e = datetime.strptime(self.end_time, fmt)
+            s = datetime.strptime(self.start_time, "%H:%M")
+            e = datetime.strptime(self.end_time,   "%H:%M")
         except ValueError:
-            raise ValueError("Định dạng giờ phải là HH:MM")
+            return self
         if e <= s:
             raise ValueError("end_time phải sau start_time")
         from datetime import timedelta
@@ -114,12 +116,10 @@ class BookingCreate(BaseModel):
 
 
 class BookingCancel(BaseModel):
-    """Body request khi hủy booking — PATCH /bookings/{id}/cancel."""
     reason: Optional[str] = None
 
 
 class BookingOut(BaseModel):
-    """Dữ liệu booking trả về client."""
     id: str
     place_id: str
     user_id: int
@@ -128,9 +128,10 @@ class BookingOut(BaseModel):
     start_time: str
     end_time: str
     party_size: int
-    total_price: Optional[float]
-    notes: Optional[str]
-    partner_ref: Optional[str]
-    created_at: str
+    total_price: Optional[float] = None
+    notes: Optional[str]        = None
+    partner_ref: Optional[str]  = None
+    cancel_reason: Optional[str] = None
+    created_at: Optional[str]   = None
 
     model_config = {"from_attributes": True}
