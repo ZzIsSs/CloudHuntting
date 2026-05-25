@@ -6,3 +6,5 @@ pandas
 scikit-learn
 joblib
 cachetools
+sqlalchemy
+apscheduler
