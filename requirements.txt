@@ -8,3 +8,6 @@ joblib
 cachetools
 sqlalchemy
 apscheduler
+python-jose
+passlib
+bcrypt
