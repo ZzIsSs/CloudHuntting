@@ -4,11 +4,13 @@ import bcrypt
 from .config import JWT_SECRET, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 
+
 def hash_password(password: str) -> str:
     pwd_bytes = password.encode('utf-8')
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(pwd_bytes, salt)
     return hashed.decode('utf-8')
+
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

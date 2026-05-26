@@ -83,4 +83,9 @@ app.include_router(router)
 
 @app.get("/health", tags=["Health"])
 def health():
-    return {"service": "s3_auth", "status": "ok"}
+    return {"service": "s3_auth", "status": "ok"}
+
+if __name__ == "__main__":
+    import uvicorn
+    # Khởi chạy Service 3 trên cổng 8003
+    uvicorn.run("s3_auth.main:app", host="127.0.0.1", port=8003, reload=True)

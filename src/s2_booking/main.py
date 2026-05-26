@@ -73,3 +73,9 @@ def health():
         "version":   "1.0.0",
         "auth_mode": "mock" if config.MOCK_AUTH else "jwt",
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    # Chạy Service 2 ở port 8002
+    uvicorn.run("s2_booking.main:app", host="127.0.0.1", port=8002, reload=True)
