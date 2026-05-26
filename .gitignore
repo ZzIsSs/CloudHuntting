@@ -229,3 +229,7 @@ data/*
 *.h5
 *.pth
 *.onnx
+
+# Chặn các file cơ sở dữ liệu SQLite
+*.db
+*.db-journal
