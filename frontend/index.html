@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudHunting - San May Da Lat</title>
+    <meta name="description" content="Tim dia diem san may tot nhat tai Da Lat voi AI">
+    <link rel="stylesheet" href="/app/css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <span class="icon">&#9729;</span>
+            <span>CloudHunting</span>
+        </div>
+        <div class="navbar-user">
+            <span id="display-username"></span>
+            <button class="btn-logout" id="btn-logout">Thoat</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Search Section -->
+        <section class="search-section">
+            <h2>&#127748; Tim diem san may</h2>
+            <p>Nhap dia diem ban dang o va ban kinh muon kham pha</p>
+
+            <form id="search-form" class="search-card">
+                <div class="form-group">
+                    <label class="form-label" for="location-input">Dia diem trung tam</label>
+                    <input class="form-input" type="text" id="location-input" 
+                           placeholder="VD: Ho Xuan Huong, nha nghi DaLat Sky..." required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ban kinh khao sat</label>
+                    <div class="radius-control">
+                        <input type="range" class="radius-slider" id="radius-slider" 
+                               min="1" max="50" value="15" step="1">
+                        <span class="radius-value" id="radius-value">15 km</span>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    &#128269; Kham pha
+                </button>
+            </form>
+        </section>
+
+        <!-- Results Section (hidden by default) -->
+        <section class="results-section" id="results-section" style="display: none;">
+            <div class="results-header">
+                <h3>&#127919; Ket qua</h3>
+                <span class="results-count" id="results-count">0 dia diem</span>
+            </div>
+            <div id="results-container"></div>
+        </section>
+    </div>
+
+    <script src="/app/js/api.js"></script>
+    <script src="/app/js/app.js"></script>
+    <script>initMainPage();</script>
+</body>
+</html>

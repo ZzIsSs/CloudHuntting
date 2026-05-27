@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from . import schemas, models
-from shared.database import get_db
+from src.shared.database import get_db
 
 router = APIRouter(prefix="/content", tags=["Content & CSKH"])
 

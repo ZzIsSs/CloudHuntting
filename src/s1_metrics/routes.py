@@ -2,19 +2,16 @@ from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import requests
 
-from .schemas import CloudHuntingRequest, CloudHuntingResponse
-from .weather_service import WeatherService
-from .ai_service import predict_cloud_probability
+from .schemas import CloudHuntingRequest, CloudHuntingResponse, SpotResult
+from .nearby_service import scan_nearby_spots
 
 router = APIRouter()
 
 def send_log_to_service_5(data: Dict[str, Any]):
     """
-    """
     Module 4: Tương tác hệ thống (Gửi dữ liệu log về Service 5).
     """
-    # Gọi thẳng sang Service 5
-    print(f"🔁 Đang gửi log thống kê về Service 5: Tọa độ ({data['lat']}, {data['lon']}) - Tỷ lệ: {data['probability']}%")
+    print(f"🔁 Đang gửi log thống kê về Service 5: {data['location_name']} - Top 1: {data['top1_probability']}%")
     try:
         requests.post("http://127.0.0.1:8005/api/s5/log", json=data, timeout=2)
     except Exception as e:
@@ -23,39 +20,45 @@ def send_log_to_service_5(data: Dict[str, Any]):
 @router.post("/predict", response_model=CloudHuntingResponse)
 def predict_cloud_metrics(request: CloudHuntingRequest):
     """
-    Endpoint chính: Phân tích chỉ số tức thời.
-    Nhận tọa độ, lấy thời tiết, chạy AI, và trả kết quả.
+    Endpoint chính của Service 1:
+    Nhập tên địa điểm + bán kính → Trả về Top 5 địa điểm săn mây tốt nhất.
+    
+    Ví dụ input: { "location_name": "Hồ Xuân Hương", "radius_km": 15 }
     """
-    # Bước 1 & 2: Dữ liệu (lat, lon) đã được validate bởi schemas.py
-    lat, lon = request.lat, request.lon
-    
-    # Bước 3: Lấy dữ liệu thời tiết (Module 2)
-    weather_data = WeatherService.get_weather(lat, lon)
-    
-    if weather_data.get("error") and weather_data.get("source") != "Fallback":
-        raise HTTPException(status_code=500, detail="Không thể lấy dữ liệu thời tiết.")
-        
-    # Bước 4: Chạy AI (Module 3)
+    # Bước 1: Quét toàn bộ HOTSPOTS trong bán kính
     try:
-        probability, suggestion = predict_cloud_probability(weather_data)
+        result = scan_nearby_spots(request.location_name, request.radius_km)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống AI: {str(e)}")
-        
-    # Bước 5: Đóng gói kết quả và gửi log S5 (Module 4)
-    response_data = CloudHuntingResponse(
-        probability=probability,
-        suggestion=suggestion,
-        weather_data=weather_data,
-        data_source=weather_data.get("source", "Unknown")
+        raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
+    
+    # Bước 2: Kiểm tra có tìm được địa điểm nào không
+    if result["total_spots_found"] == 0:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Không tìm thấy địa điểm săn mây nào trong bán kính {request.radius_km}km từ '{request.location_name}'. Hãy thử tăng bán kính lên."
+        )
+    
+    # Bước 3: Chuyển đổi kết quả thành Pydantic models
+    top_spots = [SpotResult(**spot) for spot in result["top_spots"]]
+    
+    # Bước 4: Gửi log sang S5 (ghi nhận top 1)
+    if top_spots:
+        send_log_to_service_5({
+            "location_name": request.location_name,
+            "lat": result["center_lat"],
+            "lon": result["center_lon"],
+            "top1_probability": top_spots[0].probability,
+            "top1_location": top_spots[0].location_name,
+            "probability": top_spots[0].probability,
+            "weather_data": {}
+        })
+    
+    # Bước 5: Trả về kết quả
+    return CloudHuntingResponse(
+        center_location=result["center_location"],
+        center_lat=result["center_lat"],
+        center_lon=result["center_lon"],
+        radius_km=result["radius_km"],
+        total_spots_found=result["total_spots_found"],
+        top_spots=top_spots
     )
-    
-    # Gửi log sang S5
-    send_log_to_service_5({
-        "location_name": request.location_name,
-        "lat": lat,
-        "lon": lon,
-        "probability": probability,
-        "weather_data": weather_data
-    })
-    
-    return response_data

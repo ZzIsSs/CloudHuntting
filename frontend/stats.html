@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudHunting - Thong ke</title>
+    <meta name="description" content="Thong ke xu huong may tai Da Lat">
+    <link rel="stylesheet" href="/app/css/style.css">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <a href="/app/index.html" style="color: inherit; text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                <span class="icon">&#9668;</span>
+                <span>Quay lai</span>
+            </a>
+        </div>
+        <div class="navbar-user">
+            <span id="display-username"></span>
+            <button class="btn-logout" id="btn-logout">Thoat</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Stats Hero -->
+        <section class="stats-hero">
+            <h1 id="stats-location-name">---</h1>
+            <p style="color: var(--text-secondary); font-size: 0.85rem;">Xu huong xac suat may 7 ngay qua</p>
+            <div class="stats-current">
+                <span id="stats-current-value" class="prob-medium">--</span>
+            </div>
+            <div class="stats-trend trend-stable" id="stats-trend-badge">
+                Dang tai...
+            </div>
+        </section>
+
+        <!-- Chart -->
+        <div class="chart-card">
+            <h3>&#128200; Bieu do xu huong</h3>
+            <div class="chart-canvas-wrapper">
+                <canvas id="stats-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="stat-value prob-medium" id="stat-avg">--</div>
+                <div class="stat-label">Trung binh</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value prob-high" id="stat-max">--</div>
+                <div class="stat-label">Cao nhat</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value prob-low" id="stat-min">--</div>
+                <div class="stat-label">Thap nhat</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-trend" style="color: var(--text-secondary);">--</div>
+                <div class="stat-label">Xu huong</div>
+            </div>
+        </div>
+
+        <!-- Back button -->
+        <div style="padding-bottom: 48px;">
+            <a href="/app/index.html" class="btn btn-secondary">
+                &#9668; Quay lai tim diem san may
+            </a>
+        </div>
+    </div>
+
+    <script src="/app/js/api.js"></script>
+    <script src="/app/js/app.js"></script>
+    <script>initStatsPage();</script>
+</body>
+</html>
