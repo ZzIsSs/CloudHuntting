@@ -11,11 +11,10 @@ app = FastAPI(
 
 @app.on_event("startup")
 async def startup_event():
-    """
-    Load mô hình AI khi khởi động server.
-    """
-    print("🚀 Đang khởi động Service 1...")
+    print("[INFO] Đang khởi động Service 1...")
+    # Load model vào RAM ngay khi startup (dùng load_model đã import ở đầu file)
     load_model()
+    print("[INFO] Service 1 đã sẵn sàng.")
 
 # Đăng ký routes
 app.include_router(s1_router, prefix="/api/s1", tags=["Metrics"])
@@ -28,4 +27,4 @@ def root():
 if __name__ == "__main__":
     import uvicorn
     # Dùng cho việc test chạy trực tiếp file này
-    uvicorn.run("src.s1_metrics.main:app", host="127.0.0.1", port=8001, reload=True)
+    uvicorn.run("src.s1_metrics.main:app", host="0.0.0.0", port=8001, reload=True)

@@ -90,10 +90,11 @@ async function apiRegister(username, email, password) {
 
 // ─── S1 Metrics API ────────────────────────────────────────
 
-async function apiPredict(locationName, radiusKm) {
+async function apiPredict(locationName, radiusKm, forecastHours = 0) {
     return await apiRequest('POST', '/api/s1/predict', {
         location_name: locationName,
-        radius_km: radiusKm
+        radius_km: radiusKm,
+        forecast_hours: forecastHours
     });
 }
 
@@ -105,6 +106,18 @@ async function apiGetStatistics(locationName, days = 7) {
         days: days
     });
     return await apiRequest('GET', `/api/s5/statistics?${params}`);
+}
+
+// ─── S2 Booking API ───────────────────────────────────────────
+
+async function apiGetNearbyPlaces(lat, lon, radiusKm) {
+    const params = new URLSearchParams({
+        lat: lat,
+        lon: lon,
+        radius_km: radiusKm,
+        per_page: 5
+    });
+    return await apiRequest('GET', `/api/v1/places/nearby?${params}`);
 }
 
 // ─── Logout ─────────────────────────────────────────────────
