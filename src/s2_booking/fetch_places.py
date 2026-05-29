@@ -122,7 +122,7 @@ def parse_element(el: dict, index: int) -> dict | None:
             "sun": ["07:00","22:00"],
         },
         "photos": [{
-            "url":        f"https://picsum.photos/seed/{el['id']}/800/600",
+            "url":        f"https://picsum.photos/seed/{index}/800/600",
             "is_primary": True,
             "caption":    f"{name} - Đà Lạt",
         }],

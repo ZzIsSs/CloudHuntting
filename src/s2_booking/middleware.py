@@ -4,7 +4,6 @@ from .dependencies import get_current_user, CurrentUser
 
 
 def role_required(*allowed_roles: str):
-    
     async def role_checker(
         current_user: CurrentUser = Depends(get_current_user)
     ) -> CurrentUser:
@@ -18,6 +17,5 @@ def role_required(*allowed_roles: str):
 
 
 
-user_required      = role_required("user", "admin", "moderator")
 moderator_required = role_required("admin", "moderator")
 admin_required     = role_required("admin")
