@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
-from .models import TicketStatusEnum
+from .models import TicketStatusEnum, ArticleTypeEnum
 
 # TICKETS
 class TicketBase(BaseModel):
@@ -22,12 +22,33 @@ class TicketOut(TicketBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+# TICKET MESSAGES
+class MessageBase(BaseModel):
+    message: str = Field(..., min_length=1, description="Message content")
+
+class MessageCreate(MessageBase):
+    pass
+
+class MessageOut(MessageBase):
+    id: int
+    ticket_id: int
+    sender_id: int
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class TicketDetailOut(BaseModel):
+    ticket: TicketOut
+    messages: List[MessageOut]
 
 # POSTS (News/Blogs)
 class PostBase(BaseModel):
     title: str = Field(..., min_length=5, max_length=200)
     content: str
+    article_type: ArticleTypeEnum = ArticleTypeEnum.POST
     is_published: bool = False
 
 class PostCreate(PostBase):
@@ -39,11 +60,11 @@ class PostOut(PostBase):
     created_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # REVIEWS
 class ReviewBase(BaseModel):
-    tour_id: int
+    location_id: int
     rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
     comment: Optional[str] = None
 
@@ -56,4 +77,4 @@ class ReviewOut(ReviewBase):
     created_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
