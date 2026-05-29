@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, Enum, DateTime, ForeignKey, Boolean
 from sqlalchemy.sql import func
-from shared.database import Base
+from src.shared.database import Base
 import enum
 
 class TicketStatusEnum(str, enum.Enum):

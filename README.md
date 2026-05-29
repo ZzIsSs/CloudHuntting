@@ -66,97 +66,20 @@ cloud-hunting-system/
 ## Bước 1: Clone kho mã nguồn về máy
 
 ```bash
-git clone https://github.com/ZzIsSs/CloudHuntting.git
-cd CloudHuntting
+pip install fastapi uvicorn sqlalchemy apscheduler pydantic
 ```
 
-## Bước 2: Cài đặt Môi trường Ảo (Virtual Environment)
-
+### 2. Chạy Service
+Bạn có thể khởi động Server bằng lệnh:
 ```bash
-# Tạo môi trường ảo có tên là venv
-python -m venv venv
+python src/s6_recommend/main.py
 ```
+*(Server sẽ chạy tại `http://127.0.0.1:8006`)*
 
-### Kích hoạt môi trường
+### 3. Test API thông qua Swagger UI
+Sau khi chạy Server, truy cập vào giao diện Swagger UI tại:
+👉 `http://127.0.0.1:8006/docs`
 
-**Windows**
+Bạn có thể test trực tiếp các endpoints `/recommend`, `/plan-b`, `/notifications` ngay trên giao diện này bằng cách nhập JSON request.
 
-```bash
-venv\Scripts\activate
-```
 
-**macOS/Linux**
-
-```bash
-source venv/bin/activate
-```
-
-## Bước 3: Cài đặt thư viện
-
-```bash
-pip install -r requirements.txt
-```
-
-## Bước 4: Cấu hình biến môi trường
-
-Tạo một file tên là `.env` ở thư mục gốc (**ngang hàng với README**).
-
-**Tuyệt đối KHÔNG push file `.env` lên GitHub.**
-
-Thêm các API Key cần thiết vào file:
-
-```env
-WEATHER_API_KEY=your_api_key_here
-JWT_SECRET=your_secret_key_here
-```
-
----
-
-# 📜 Nội quy Code & Làm việc Nhóm (Dành cho Team)
-
-Để hệ thống hoạt động trơn tru và không bị xung đột code, toàn bộ thành viên bắt buộc phải tuân thủ luồng **Git Workflow** sau:
-
-## 1. Luật Nhánh (Branching)
-
-### `main`
-Nhánh chứa code hoàn chỉnh, ổn định nhất.  
-(**Khóa bảo vệ, không được push trực tiếp**)
-
-### `develop`
-Nhánh làm việc chung của cả team.  
-(**Khóa bảo vệ, không được push trực tiếp**)
-
-### `feature/...`
-Nhánh để làm tính năng mới.
-
-Mọi người phải rẽ nhánh từ `develop`.
-
-Ví dụ:
-
-```bash
-git checkout -b feature/s1-weather-api develop
-```
-
-## 2. Luật Gộp Code (Pull Request)
-
-- Code xong trên nhánh `feature/...` phải đẩy lên GitHub và tạo **Pull Request (PR)** xin gộp vào `develop`.
-- **Bắt buộc:** Điền đầy đủ thông tin vào **PR Template** có sẵn.
-- Cần ít nhất **1 người (Tech Lead)** approve thì mới được merge.
-
-## 3. Luật Báo cáo Tiến độ (Issue Tracking)
-
-Quản lý task hoàn toàn trên GitHub Projects và GitHub Issues.
-
-Khi tạo PR, bắt buộc phải gõ vào phần mô tả PR cú pháp:
-
-```txt
-Closes #ID
-```
-
-Ví dụ:
-
-```txt
-Closes #5
-```
-
-để hệ thống tự động đánh dấu hoàn thành task trên bảng tiến độ.
