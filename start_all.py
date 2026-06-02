@@ -38,7 +38,7 @@ def main():
         # Chay truc tiep bang subprocess (khong dung cmd /k de tranh loi duong dan)
         proc = subprocess.Popen(
             [PYTHON, "-m", "uvicorn", svc["module"],
-             "--host", "127.0.0.1", "--port", str(svc["port"]), "--reload"],
+             "--host", "127.0.0.1", "--port", str(svc["port"])],
             cwd=BASE_DIR,
             creationflags=subprocess.CREATE_NEW_CONSOLE
         )

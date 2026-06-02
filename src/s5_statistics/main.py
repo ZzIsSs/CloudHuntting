@@ -45,4 +45,4 @@ app.include_router(s5_router, prefix="/api/s5", tags=["Statistics"])
 if __name__ == "__main__":
     import uvicorn
     # Chạy Service 5 ở port 8005
-    uvicorn.run("src.s5_statistics.main:app", host="127.0.0.1", port=8005, reload=True)
+    uvicorn.run("src.s5_statistics.main:app", host="0.0.0.0", port=8005, reload=True)

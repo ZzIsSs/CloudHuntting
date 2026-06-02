@@ -1,9 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import requests
+import os
 
-from .schemas import CloudHuntingRequest, CloudHuntingResponse, SpotResult
+from .schemas import CloudHuntingRequest, CloudHuntingResponse, SpotResult, SinglePredictRequest, SinglePredictResponse
 from .nearby_service import scan_nearby_spots
+from .weather_service import WeatherService
+from .ai_service import predict_cloud_probability
 
 router = APIRouter()
 
@@ -11,9 +14,9 @@ def send_log_to_service_5(data: Dict[str, Any]):
     """
     Module 4: Tương tác hệ thống (Gửi dữ liệu log về Service 5).
     """
-    print(f"🔁 Đang gửi log thống kê về Service 5: {data['location_name']} - Top 1: {data['top1_probability']}%")
+    print(f"🔁 Đang gửi log thống kê về Service 5: {data['location_name']} - {data['probability']}%")
     try:
-        requests.post("http://127.0.0.1:8005/api/s5/log", json=data, timeout=2)
+        requests.post(f"{os.getenv('S5_URL', 'http://127.0.0.1:8005')}/api/s5/log", json=data, timeout=2)
     except Exception as e:
         print(f"Không thể gửi log sang S5: {e}")
 
@@ -27,7 +30,7 @@ def predict_cloud_metrics(request: CloudHuntingRequest):
     """
     # Bước 1: Quét toàn bộ HOTSPOTS trong bán kính
     try:
-        result = scan_nearby_spots(request.location_name, request.radius_km)
+        result = scan_nearby_spots(request.location_name, request.radius_km, request.forecast_hours)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi hệ thống: {str(e)}")
     
@@ -41,16 +44,34 @@ def predict_cloud_metrics(request: CloudHuntingRequest):
     # Bước 3: Chuyển đổi kết quả thành Pydantic models
     top_spots = [SpotResult(**spot) for spot in result["top_spots"]]
     
-    # Bước 4: Gửi log sang S5 (ghi nhận top 1)
+    # Bước 4: Gửi log sang S5 (ghi nhận top 1) với weather_data đầy đủ
     if top_spots:
+        top1 = top_spots[0]
+        # Lấy weather data thực tế cho top 1 để gửi log
+        try:
+            weather_window = WeatherService.get_weather_window(top1.lat, top1.lon, 0)
+            w = weather_window[0] if weather_window else {}
+            weather_payload = {
+                "temperature_2m": w.get("temperature_2m", 0),
+                "relative_humidity_2m": w.get("relative_humidity_2m", 0),
+                "wind_speed_10m": w.get("wind_speed_10m", 0),
+                "pressure_msl": w.get("pressure_msl", 0),
+                "cloud_cover_low": w.get("cloud_cover_low", 0),
+                "cloud_cover_high": w.get("cloud_cover_high", 0),
+                "dew_point_2m": w.get("dew_point_2m", 0),
+            }
+        except Exception:
+            weather_payload = {
+                "temperature_2m": 0, "relative_humidity_2m": 0, "wind_speed_10m": 0,
+                "pressure_msl": 0, "cloud_cover_low": 0, "cloud_cover_high": 0, "dew_point_2m": 0,
+            }
+        
         send_log_to_service_5({
-            "location_name": request.location_name,
-            "lat": result["center_lat"],
-            "lon": result["center_lon"],
-            "top1_probability": top_spots[0].probability,
-            "top1_location": top_spots[0].location_name,
-            "probability": top_spots[0].probability,
-            "weather_data": {}
+            "location_name": top1.location_name,
+            "lat": top1.lat,
+            "lon": top1.lon,
+            "probability": top1.probability,
+            "weather_data": weather_payload
         })
     
     # Bước 5: Trả về kết quả
@@ -62,3 +83,48 @@ def predict_cloud_metrics(request: CloudHuntingRequest):
         total_spots_found=result["total_spots_found"],
         top_spots=top_spots
     )
+
+@router.post("/predict-single", response_model=SinglePredictResponse)
+def predict_single_point(request: SinglePredictRequest):
+    """
+    Endpoint nội bộ: Nhận tọa độ GPS trực tiếp → Trả về dự báo cho 1 điểm.
+    Dùng cho tích hợp S6 → S1 (không cần geocoding, không quét nhiều hotspot).
+    
+    Ví dụ input: { "lat": 11.979, "lon": 108.431, "location_name": "Đồi Đa Phú" }
+    """
+    try:
+        # Lấy thời tiết hiện tại (forecast_hours=0 → 1 datapoint)
+        weather_window = WeatherService.get_weather_window(request.lat, request.lon, 0)
+        
+        # Chạy AI prediction
+        probability, best_time, suggestion, _timeline = predict_cloud_probability(weather_window)
+        
+        # Gửi log sang S5
+        w = weather_window[0] if weather_window else {}
+        send_log_to_service_5({
+            "location_name": request.location_name,
+            "lat": request.lat,
+            "lon": request.lon,
+            "probability": probability,
+            "weather_data": {
+                "temperature_2m": w.get("temperature_2m", 0),
+                "relative_humidity_2m": w.get("relative_humidity_2m", 0),
+                "wind_speed_10m": w.get("wind_speed_10m", 0),
+                "pressure_msl": w.get("pressure_msl", 0),
+                "cloud_cover_low": w.get("cloud_cover_low", 0),
+                "cloud_cover_high": w.get("cloud_cover_high", 0),
+                "dew_point_2m": w.get("dew_point_2m", 0),
+            }
+        })
+        
+        return SinglePredictResponse(
+            location_name=request.location_name,
+            lat=request.lat,
+            lon=request.lon,
+            probability=probability,
+            best_time=best_time,
+            suggestion=suggestion
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi khi dự đoán: {str(e)}")
+

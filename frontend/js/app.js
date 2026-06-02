@@ -3,6 +3,10 @@
  * Xu ly render UI, su kien nguoi dung, va hieu ung dong.
  */
 
+// ─── Global State ───────────────────────────────────────────
+let lastSearchData = null; // Luu ket qua tim kiem gan nhat (co timeline)
+let timelineVisible = false;
+
 // ─── Toast Notification ─────────────────────────────────────
 
 function showToast(message, type = 'error') {
@@ -142,23 +146,36 @@ function initMainPage() {
         });
     }
 
+    // Forecast slider
+    const forecastSlider = document.getElementById('forecast-slider');
+    const forecastDisplay = document.getElementById('forecast-value');
+    if (forecastSlider) {
+        forecastSlider.addEventListener('input', () => {
+            const val = parseInt(forecastSlider.value);
+            if (val === 0) forecastDisplay.textContent = 'Hien tai';
+            else forecastDisplay.textContent = `+ ${val} gio`;
+        });
+    }
+
     // Search form
     const searchForm = document.getElementById('search-form');
     searchForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const location = document.getElementById('location-input').value.trim();
         const radius = parseFloat(slider.value);
+        const forecastHours = forecastSlider ? parseInt(forecastSlider.value) : 0;
 
         if (!location) {
             showToast('Vui long nhap ten dia diem');
             return;
         }
 
-        showLoading('Dang quet cac diem san may...');
+        const timeLabel = forecastHours === 0 ? 'hien tai' : `sau ${forecastHours} gio`;
+        showLoading(`Dang quet cac diem san may (${timeLabel})...`);
         try {
-            const result = await apiPredict(location, radius);
+            const result = await apiPredict(location, radius, forecastHours);
             hideLoading();
-            renderResults(result);
+            renderResults(result, forecastHours);
         } catch (err) {
             hideLoading();
             showToast(err.message);
@@ -167,14 +184,23 @@ function initMainPage() {
     });
 }
 
-function renderResults(data) {
+function renderResults(data, forecastHours = 0) {
+    // Luu data lai de ve bieu do khi bam nut Thong ke
+    lastSearchData = data;
+    timelineVisible = false;
+    const timelinePanel = document.getElementById('timeline-panel');
+    if (timelinePanel) timelinePanel.style.display = 'none';
+    const toggleBtn = document.getElementById('btn-toggle-stats');
+    if (toggleBtn) toggleBtn.classList.remove('active');
+
     const container = document.getElementById('results-container');
     const resultsSection = document.getElementById('results-section');
     resultsSection.style.display = 'block';
 
     // Update header
     const countEl = document.getElementById('results-count');
-    countEl.textContent = `${data.total_spots_found} dia diem`;
+    const timeText = forecastHours === 0 ? "Hien tai" : `+${forecastHours} gio`;
+    countEl.innerHTML = `${data.total_spots_found} dia diem <span style="font-size: 0.85rem; color: #a8b2d1; margin-left: 10px;">(Du bao: ${timeText})</span>`;
 
     if (data.top_spots.length === 0) {
         renderEmpty();
@@ -193,10 +219,11 @@ function renderResults(data) {
                 <div class="spot-info">
                     <div class="spot-name">${spot.location_name}</div>
                     <div class="spot-distance">Cach ${spot.distance_km} km</div>
+                    <div class="spot-best-time" style="color: #fde047; font-size: 0.85rem; margin-top: 4px;">&#9200; Khung gio vang: <b>${spot.best_time}</b></div>
                 </div>
                 <div class="spot-probability">
                     <div class="probability-value ${probClass}">${spot.probability}%</div>
-                    <div class="probability-label">xac suat</div>
+                    <div class="probability-label">MAX</div>
                 </div>
             </div>
             <div class="progress-bar">
@@ -208,10 +235,112 @@ function renderResults(data) {
                    class="btn-stats" onclick="event.stopPropagation()">
                     Xem thong ke
                 </a>
+                <button class="btn-suggest" onclick="event.stopPropagation(); openNearbyModal('${spot.location_name}', ${spot.lat}, ${spot.lon})">
+                    Tien ich
+                </button>
             </div>
         </div>
         `;
     }).join('');
+
+    // Render ban do
+    renderMap(data);
+}
+
+// ─── Map Rendering (Leaflet) ────────────────────────────────
+
+let cloudMap = null;
+
+function renderMap(data) {
+    const mapEl = document.getElementById('cloud-map');
+    if (!mapEl || typeof L === 'undefined') return;
+
+    // Xoa map cu neu co
+    if (cloudMap) {
+        cloudMap.remove();
+        cloudMap = null;
+    }
+
+    // Khoi tao map
+    cloudMap = L.map('cloud-map', {
+        zoomControl: true,
+        attributionControl: false
+    });
+
+    // Dark tile layer (CartoDB Dark Matter)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 18
+    }).addTo(cloudMap);
+
+    const bounds = [];
+
+    // Marker trung tam (xanh duong, pulsing)
+    const centerIcon = L.divIcon({
+        className: '',
+        html: '<div class="center-marker"></div>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
+    });
+
+    const centerLatLng = [data.center_lat, data.center_lon];
+    bounds.push(centerLatLng);
+
+    L.marker(centerLatLng, { icon: centerIcon })
+        .addTo(cloudMap)
+        .bindPopup(`
+            <div class="map-popup-name">📍 ${data.center_location}</div>
+            <div style="color: #94a3b8;">Vi tri trung tam khao sat</div>
+        `);
+
+    // Vong tron ban kinh
+    L.circle(centerLatLng, {
+        radius: data.radius_km * 1000,
+        color: 'rgba(59, 130, 246, 0.5)',
+        fillColor: 'rgba(59, 130, 246, 0.08)',
+        fillOpacity: 1,
+        weight: 1.5,
+        dashArray: '6, 4'
+    }).addTo(cloudMap);
+
+    // Markers cho top spots
+    data.top_spots.forEach((spot) => {
+        const rank = spot.rank;
+        const spotLatLng = [spot.lat, spot.lon];
+        bounds.push(spotLatLng);
+
+        const markerIcon = L.divIcon({
+            className: '',
+            html: `<div class="rank-marker rank-marker-${Math.min(rank, 5)}"><span>${rank}</span></div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -34]
+        });
+
+        const probClass = spot.probability >= 70 ? 'prob-high' :
+                          spot.probability >= 40 ? 'prob-medium' : 'prob-low';
+
+        L.marker(spotLatLng, { icon: markerIcon })
+            .addTo(cloudMap)
+            .bindPopup(`
+                <div class="map-popup-name">#${rank} ${spot.location_name}</div>
+                <div class="map-popup-prob ${probClass}">${spot.probability}%</div>
+                <div style="color: #94a3b8;">Cach ${spot.distance_km} km · ${spot.best_time}</div>
+            `);
+
+        // Duong noi tu trung tam toi spot
+        L.polyline([centerLatLng, spotLatLng], {
+            color: 'rgba(139, 92, 246, 0.35)',
+            weight: 1.5,
+            dashArray: '4, 6'
+        }).addTo(cloudMap);
+    });
+
+    // Auto fit bounds
+    if (bounds.length > 1) {
+        cloudMap.fitBounds(bounds, { padding: [30, 30] });
+    } else {
+        cloudMap.setView(centerLatLng, 12);
+    }
 }
 
 function renderEmpty() {
@@ -229,6 +358,211 @@ function renderEmpty() {
 
 function viewStats(locationName) {
     window.location.href = `/app/stats.html?name=${encodeURIComponent(locationName)}`;
+}
+
+// ─── Timeline Chart (Main Page) ─────────────────────────────
+
+const TIMELINE_COLORS = [
+    '#fde047', // Vang gold - Rank 1
+    '#a78bfa', // Tim - Rank 2
+    '#fb923c', // Cam - Rank 3
+    '#22d3ee', // Cyan - Rank 4
+    '#f472b6'  // Hong - Rank 5
+];
+
+function toggleTimeline() {
+    const panel = document.getElementById('timeline-panel');
+    const btn = document.getElementById('btn-toggle-stats');
+    if (!panel || !lastSearchData) return;
+
+    timelineVisible = !timelineVisible;
+
+    if (timelineVisible) {
+        panel.style.display = 'block';
+        btn.classList.add('active');
+        // Ve bieu do voi data da luu
+        requestAnimationFrame(() => drawTimelineChart(lastSearchData.top_spots));
+    } else {
+        panel.style.display = 'none';
+        btn.classList.remove('active');
+    }
+}
+
+function drawTimelineChart(spots) {
+    const canvas = document.getElementById('timeline-chart');
+    if (!canvas || !spots || spots.length === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const wrapper = canvas.parentElement;
+    const rect = wrapper.getBoundingClientRect();
+
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    ctx.scale(dpr, dpr);
+
+    const W = rect.width;
+    const H = rect.height;
+    const padding = { top: 25, right: 20, bottom: 50, left: 50 };
+    const chartW = W - padding.left - padding.right;
+    const chartH = H - padding.top - padding.bottom;
+
+    // Clear
+    ctx.clearRect(0, 0, W, H);
+
+    // Tim so gio max (lay tu spot co nhieu timeline nhat)
+    let maxPoints = 0;
+    let timeLabels = [];
+    spots.forEach(spot => {
+        console.log(`[Timeline] ${spot.location_name}: timeline =`, spot.timeline ? spot.timeline.length + ' points' : 'MISSING');
+        if (spot.timeline && spot.timeline.length > maxPoints) {
+            maxPoints = spot.timeline.length;
+            timeLabels = spot.timeline.map(t => t.time);
+        }
+    });
+
+    if (maxPoints === 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '14px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Dang tai du lieu bieu do...', W / 2, H / 2);
+        ctx.font = '11px Inter, sans-serif';
+        ctx.fillText('(Hay thu tim kiem lai)', W / 2, H / 2 + 22);
+        return;
+    }
+
+    // Grid ngang (0%, 25%, 50%, 75%, 100%)
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (chartH / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(W - padding.right, y);
+        ctx.stroke();
+
+        const val = 100 - 25 * i;
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${val}%`, padding.left - 8, y + 4);
+    }
+
+    // Ve tung duong cho moi dia diem
+    spots.forEach((spot, spotIdx) => {
+        if (!spot.timeline || spot.timeline.length === 0) return;
+
+        const color = TIMELINE_COLORS[spotIdx % TIMELINE_COLORS.length];
+        const values = spot.timeline.map(t => t.probability);
+        const numPoints = values.length;
+
+        const points = values.map((v, i) => ({
+            x: padding.left + (chartW / Math.max(numPoints - 1, 1)) * i,
+            y: padding.top + chartH - (v / 100) * chartH
+        }));
+
+        // Area fill (nhe)
+        const gradient = ctx.createLinearGradient(0, padding.top, 0, H - padding.bottom);
+        gradient.addColorStop(0, hexToRgba(color, 0.12));
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+        // Ve area fill nhe cho rank 1
+        if (spotIdx === 0) {
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, H - padding.bottom);
+            points.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.lineTo(points[points.length - 1].x, H - padding.bottom);
+            ctx.closePath();
+            ctx.fillStyle = hexToRgba(color, 0.1);
+            ctx.fill();
+        }
+
+        // Line
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = spotIdx === 0 ? 3 : 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        // Ve duong cong smooth (bezier)
+        points.forEach((p, i) => {
+            if (i === 0) {
+                ctx.moveTo(p.x, p.y);
+            } else {
+                const prev = points[i - 1];
+                const cpx = (prev.x + p.x) / 2;
+                ctx.quadraticCurveTo(prev.x + (cpx - prev.x) * 0.8, prev.y, cpx, (prev.y + p.y) / 2);
+                ctx.quadraticCurveTo(p.x - (p.x - cpx) * 0.8, p.y, p.x, p.y);
+            }
+        });
+        ctx.stroke();
+
+        // Dots
+        points.forEach((p, i) => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, spotIdx === 0 ? 4 : 3, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = '#0a0e1a';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        });
+    });
+
+    // X-axis labels (chi hien thi 1 so label de khong bi chat)
+    if (timeLabels.length > 0) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        const step = Math.max(1, Math.floor(timeLabels.length / 8));
+        for (let i = 0; i < timeLabels.length; i += step) {
+            const x = padding.left + (chartW / Math.max(timeLabels.length - 1, 1)) * i;
+            // Xoay label
+            ctx.save();
+            ctx.translate(x, H - padding.bottom + 14);
+            ctx.rotate(-Math.PI / 6);
+            ctx.fillText(timeLabels[i], 0, 0);
+            ctx.restore();
+        }
+    }
+
+    // Y-axis title
+    ctx.save();
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.translate(14, padding.top + chartH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Chi so san may (%)', 0, 0);
+    ctx.restore();
+
+    // Render legend
+    renderTimelineLegend(spots);
+}
+
+function renderTimelineLegend(spots) {
+    const legend = document.getElementById('timeline-legend');
+    if (!legend) return;
+
+    legend.innerHTML = spots.map((spot, i) => {
+        const color = TIMELINE_COLORS[i % TIMELINE_COLORS.length];
+        return `
+            <div class="legend-item">
+                <span class="legend-color" style="background: ${color}"></span>
+                <span class="legend-name">#${spot.rank} ${spot.location_name}</span>
+                <span class="legend-value" style="color: ${color}">${spot.probability}%</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // ─── Stats Page Logic ───────────────────────────────────────
@@ -415,4 +749,55 @@ function drawChart(dailyData) {
     labels.forEach((label, i) => {
         ctx.fillText(label, points[i].x, H - padding.bottom + 20);
     });
+}
+
+// ─── Nearby Places Modal Logic ──────────────────────────────
+
+function openNearbyModal(locationName, lat, lon) {
+    const modal = document.getElementById('places-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalList = document.getElementById('modal-places-list');
+    const loading = document.getElementById('modal-loading');
+
+    modalTitle.textContent = `Tien ich quanh ${locationName}`;
+    modalList.innerHTML = '';
+    loading.style.display = 'block';
+    modal.classList.add('active');
+
+    // Dong modal khi bam nut X hoac bam ra ngoai
+    document.getElementById('modal-close').onclick = () => modal.classList.remove('active');
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.classList.remove('active');
+    };
+
+    // Goi API S2
+    apiGetNearbyPlaces(lat, lon, 2.0)
+        .then(res => {
+            loading.style.display = 'none';
+            if (res.places.length === 0) {
+                modalList.innerHTML = '<div class="empty-state"><p>Chua tim thay tien ich nao quanh day.</p></div>';
+                return;
+            }
+
+            modalList.innerHTML = res.places.map(p => {
+                const img = (p.photos && p.photos.length > 0) ? p.photos[0].url : 'https://via.placeholder.com/100x100?text=No+Image';
+                return `
+                <div class="place-card">
+                    <img src="${img}" class="place-img" alt="${p.name}">
+                    <div class="place-info">
+                        <div class="place-category">${p.category}</div>
+                        <div class="place-name">${p.name}</div>
+                        <div class="place-rating">
+                            <span>&#9733; ${p.avg_rating}</span> (${p.review_count} danh gia)
+                        </div>
+                        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Cach day ${(p.distance_km || 0).toFixed(1)} km</div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        })
+        .catch(err => {
+            loading.style.display = 'none';
+            modalList.innerHTML = `<div style="color: #ef4444; padding: 20px; text-align: center;">Loi: ${err.message}</div>`;
+        });
 }
