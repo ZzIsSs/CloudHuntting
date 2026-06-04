@@ -185,8 +185,11 @@ def get_location_reviews(location_id: int, skip: int = 0, limit: int = 10, db: S
         models.Review.location_id,
         models.Review.rating,
         models.Review.comment,
+        models.Review.image_url,
         models.Review.is_approved,
-        models.Review.created_at
+        models.Review.helpful_count,
+        models.Review.created_at,
+        models.Review.updated_at
     ).join(User, models.Review.user_id == User.id)\
      .filter(models.Review.location_id == location_id, models.Review.is_approved == True)\
      .offset(skip).limit(limit).all()
@@ -209,12 +212,60 @@ def get_location_reviews_all(
         models.Review.location_id,
         models.Review.rating,
         models.Review.comment,
+        models.Review.image_url,
         models.Review.is_approved,
-        models.Review.created_at
+        models.Review.helpful_count,
+        models.Review.created_at,
+        models.Review.updated_at
     ).join(User, models.Review.user_id == User.id)\
      .filter(models.Review.location_id == location_id)\
      .all()
     return results
+
+@router.put("/reviews/{review_id}", response_model=schemas.ReviewOut)
+def update_review(
+    review_id: int,
+    review_in: schemas.ReviewUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Cho phép tác giả chỉnh sửa bình luận của mình
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    if review.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions to edit this review")
+        
+    if review_in.rating is not None:
+        review.rating = review_in.rating
+    if review_in.comment is not None:
+        review.comment = review_in.comment
+    if review_in.image_url is not None:
+        review.image_url = review_in.image_url
+        
+    # Reset kiểm duyệt nếu không phải Admin/Mod chỉnh sửa
+    if current_user.role not in [RoleEnum.admin, RoleEnum.moderator]:
+        review.is_approved = False
+        
+    db.commit()
+    db.refresh(review)
+    return review
+
+@router.post("/reviews/{review_id}/helpful", response_model=schemas.ReviewOut)
+def mark_review_helpful(
+    review_id: int,
+    db: Session = Depends(get_db)
+):
+    # Đánh giá bình luận hữu ích (like)
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    review.helpful_count += 1
+    db.commit()
+    db.refresh(review)
+    return review
 
 @router.put("/reviews/{review_id}/approve", response_model=schemas.ReviewOut)
 def approve_review(

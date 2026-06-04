@@ -67,19 +67,28 @@ class ReviewBase(BaseModel):
     location_id: int
     rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
     comment: Optional[str] = None
+    image_url: Optional[str] = None
 
 class ReviewCreate(ReviewBase):
     pass
+
+class ReviewUpdate(BaseModel):
+    rating: Optional[int] = Field(None, ge=1, le=5, description="Rating from 1 to 5")
+    comment: Optional[str] = None
+    image_url: Optional[str] = None
 
 class ReviewOut(ReviewBase):
     id: int
     user_id: int
     is_approved: bool
+    helpful_count: int
     created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 class ReviewDetailOut(ReviewOut):
     username: str
+
 

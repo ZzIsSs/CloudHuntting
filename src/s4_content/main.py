@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from src.shared.database import create_tables
 from src.s4_content.routes import router as content_router
 import uvicorn
 
@@ -17,6 +18,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+def on_startup():
+    create_tables()
 
 # Include the router
 app.include_router(content_router, prefix="/api/v1")
