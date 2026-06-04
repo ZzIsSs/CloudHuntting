@@ -193,7 +193,50 @@ def get_location_reviews(location_id: int, skip: int = 0, limit: int = 10, db: S
     ).join(User, models.Review.user_id == User.id)\
      .filter(models.Review.location_id == location_id, models.Review.is_approved == True)\
      .offset(skip).limit(limit).all()
-    return results
+
+    review_ids = [r.id for r in results]
+    comments_by_review = {}
+    if review_ids:
+        comments = db.query(
+            models.ReviewComment.id,
+            models.ReviewComment.review_id,
+            models.ReviewComment.user_id,
+            User.username,
+            models.ReviewComment.comment,
+            models.ReviewComment.created_at
+        ).join(User, models.ReviewComment.user_id == User.id)\
+         .filter(models.ReviewComment.review_id.in_(review_ids))\
+         .order_by(models.ReviewComment.created_at.asc())\
+         .all()
+        
+        for c in comments:
+            c_dict = {
+                "id": c.id,
+                "review_id": c.review_id,
+                "user_id": c.user_id,
+                "username": c.username,
+                "comment": c.comment,
+                "created_at": c.created_at
+            }
+            comments_by_review.setdefault(c.review_id, []).append(c_dict)
+
+    reviews_out = []
+    for r in results:
+        reviews_out.append({
+            "id": r.id,
+            "user_id": r.user_id,
+            "username": r.username,
+            "location_id": r.location_id,
+            "rating": r.rating,
+            "comment": r.comment,
+            "image_url": r.image_url,
+            "is_approved": r.is_approved,
+            "helpful_count": r.helpful_count,
+            "created_at": r.created_at,
+            "updated_at": r.updated_at,
+            "comments": comments_by_review.get(r.id, [])
+        })
+    return reviews_out
 
 @router.get("/reviews/location/{location_id}/all", response_model=List[schemas.ReviewDetailOut])
 def get_location_reviews_all(
@@ -220,7 +263,50 @@ def get_location_reviews_all(
     ).join(User, models.Review.user_id == User.id)\
      .filter(models.Review.location_id == location_id)\
      .all()
-    return results
+
+    review_ids = [r.id for r in results]
+    comments_by_review = {}
+    if review_ids:
+        comments = db.query(
+            models.ReviewComment.id,
+            models.ReviewComment.review_id,
+            models.ReviewComment.user_id,
+            User.username,
+            models.ReviewComment.comment,
+            models.ReviewComment.created_at
+        ).join(User, models.ReviewComment.user_id == User.id)\
+         .filter(models.ReviewComment.review_id.in_(review_ids))\
+         .order_by(models.ReviewComment.created_at.asc())\
+         .all()
+        
+        for c in comments:
+            c_dict = {
+                "id": c.id,
+                "review_id": c.review_id,
+                "user_id": c.user_id,
+                "username": c.username,
+                "comment": c.comment,
+                "created_at": c.created_at
+            }
+            comments_by_review.setdefault(c.review_id, []).append(c_dict)
+
+    reviews_out = []
+    for r in results:
+        reviews_out.append({
+            "id": r.id,
+            "user_id": r.user_id,
+            "username": r.username,
+            "location_id": r.location_id,
+            "rating": r.rating,
+            "comment": r.comment,
+            "image_url": r.image_url,
+            "is_approved": r.is_approved,
+            "helpful_count": r.helpful_count,
+            "created_at": r.created_at,
+            "updated_at": r.updated_at,
+            "comments": comments_by_review.get(r.id, [])
+        })
+    return reviews_out
 
 @router.put("/reviews/{review_id}", response_model=schemas.ReviewOut)
 def update_review(
@@ -296,11 +382,44 @@ def delete_review(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
         
-    # Chỉ tác giả hoặc Admin/Moderator mới có quyền xóa
-    if current_user.role not in [RoleEnum.admin, RoleEnum.moderator] and review.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not enough permissions to delete this review")
+    # CHỈ ADMIN mới có quyền xóa Review
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Only admins can delete reviews")
         
+    # Xóa các comment liên quan trước
+    db.query(models.ReviewComment).filter(models.ReviewComment.review_id == review_id).delete()
+    
     db.delete(review)
     db.commit()
     return None
+
+@router.post("/reviews/{review_id}/comments", response_model=schemas.ReviewCommentDetailOut, status_code=status.HTTP_201_CREATED)
+def create_review_comment(
+    review_id: int,
+    comment_in: schemas.ReviewCommentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    new_comment = models.ReviewComment(
+        review_id=review_id,
+        user_id=current_user.id,
+        comment=comment_in.comment
+    )
+    db.add(new_comment)
+    db.commit()
+    db.refresh(new_comment)
+    
+    return schemas.ReviewCommentDetailOut(
+        id=new_comment.id,
+        review_id=new_comment.review_id,
+        user_id=new_comment.user_id,
+        username=current_user.username,
+        comment=new_comment.comment,
+        created_at=new_comment.created_at
+    )
+
 

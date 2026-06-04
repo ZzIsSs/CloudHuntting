@@ -606,6 +606,8 @@ const SPOT_IDS = {
     "Đỉnh Rada": 10
 };
 
+let currentEditingReviewId = null;
+
 async function loadReviews(locationName) {
     const locationId = SPOT_IDS[locationName] || 1;
     const reviewsList = document.getElementById('reviews-list');
@@ -614,6 +616,7 @@ async function loadReviews(locationName) {
     const role = getUserRole();
     const currentUserId = getUserId();
     const isAdminOrMod = (role === 'admin' || role === 'moderator');
+    const isAdmin = (role === 'admin');
 
     try {
         let reviews = [];
@@ -639,15 +642,54 @@ async function loadReviews(locationName) {
             const badgeHTML = isPending ? `<span class="review-badge-pending">Chờ duyệt</span>` : '';
             
             const showApprove = isAdminOrMod && isPending;
-            const showDelete = isAdminOrMod || (currentUserId && rev.user_id === currentUserId);
+            // Chỉ Admin mới được quyền xóa Review
+            const showDelete = isAdmin;
+            // Tác giả có quyền sửa Review
+            const showEdit = currentUserId && rev.user_id === currentUserId;
 
             const approveBtn = showApprove ? `<button class="btn-approve" onclick="handleApproveReview(${rev.id}, '${locationName}')">Duyệt</button>` : '';
             const deleteBtn = showDelete ? `<button class="btn-delete" onclick="handleDeleteReview(${rev.id}, '${locationName}')">Xóa</button>` : '';
             
-            const actionsHTML = (approveBtn || deleteBtn) ? `
+            const escapedComment = encodeURIComponent(rev.comment || '');
+            const editBtn = showEdit ? `<button class="btn-edit-review" onclick="handleEditClick(${rev.id}, ${rev.rating}, '${escapedComment}', '${locationName}')">Sửa</button>` : '';
+            
+            const actionsHTML = (approveBtn || deleteBtn || editBtn) ? `
                 <div class="review-actions">
                     ${approveBtn}
+                    ${editBtn}
                     ${deleteBtn}
+                </div>
+            ` : '';
+
+            // Comments/Replies lồng nhau
+            const commentsHTML = rev.comments && rev.comments.length > 0 ? `
+                <div class="review-comments-container">
+                    ${rev.comments.map(c => {
+                        const commentDate = new Date(c.created_at).toLocaleDateString('vi-VN', {
+                            year: 'numeric', month: 'long', day: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                        });
+                        return `
+                            <div class="comment-card">
+                                <div class="comment-header">
+                                    <span class="commenter-name">👤 ${c.username}</span>
+                                    <span class="comment-date">${commentDate}</span>
+                                </div>
+                                <div class="comment-body">${c.comment}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            ` : '';
+
+            const replyBtn = isLoggedIn() ? `
+                <button class="btn-reply-toggle" onclick="toggleReplyForm(${rev.id})">💬 Phản hồi</button>
+            ` : '';
+
+            const replyFormHTML = isLoggedIn() ? `
+                <div class="reply-form-container" id="reply-form-${rev.id}" style="display: none;">
+                    <input type="text" class="reply-input" id="reply-input-${rev.id}" placeholder="Bình luận phản hồi của bạn...">
+                    <button class="btn-reply-submit" onclick="submitReply(${rev.id}, '${locationName}')">Gửi</button>
                 </div>
             ` : '';
 
@@ -661,10 +703,17 @@ async function loadReviews(locationName) {
                         <span class="review-stars">${starsHTML}</span>
                     </div>
                     <div class="review-body">${rev.comment || ''}</div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                        <span class="review-date">${dateStr}</span>
+                    
+                    ${commentsHTML}
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-sm); border-top: 1px solid rgba(255,255,255,0.02); padding-top: 4px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="review-date">${dateStr}</span>
+                            ${replyBtn}
+                        </div>
                         ${actionsHTML}
                     </div>
+                    ${replyFormHTML}
                 </div>
             `;
         }).join('');
@@ -689,7 +738,7 @@ async function handleApproveReview(reviewId, locationName) {
 }
 
 async function handleDeleteReview(reviewId, locationName) {
-    if (!confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) return;
+    if (!confirm('Bạn có chắc chắn muốn xóa đánh giá này không? (Tất cả bình luận phản hồi liên quan cũng sẽ bị xóa)')) return;
     showLoading('Đang xóa bình luận...');
     try {
         await apiDeleteReview(reviewId);
@@ -702,9 +751,123 @@ async function handleDeleteReview(reviewId, locationName) {
     }
 }
 
+function handleEditClick(reviewId, rating, encodedComment, locationName) {
+    const comment = decodeURIComponent(encodedComment);
+    startEditReview(reviewId, rating, comment);
+}
+
+function startEditReview(reviewId, rating, comment) {
+    currentEditingReviewId = reviewId;
+    
+    const formTitle = document.querySelector('.add-review-form h4');
+    if (formTitle) formTitle.innerText = "Chỉnh sửa đánh giá của bạn";
+    
+    const formBtn = document.querySelector('#review-submit-form button[type="submit"]');
+    if (formBtn) formBtn.innerText = "Lưu thay đổi";
+    
+    // Thêm nút Hủy nếu chưa có
+    let cancelBtn = document.getElementById('btn-cancel-edit');
+    if (!cancelBtn) {
+        cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.id = 'btn-cancel-edit';
+        cancelBtn.className = 'btn';
+        cancelBtn.innerText = 'Hủy';
+        cancelBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        cancelBtn.style.color = 'var(--text-primary)';
+        cancelBtn.style.marginLeft = '10px';
+        cancelBtn.style.padding = '10px 20px';
+        cancelBtn.style.borderRadius = 'var(--border-radius-sm)';
+        cancelBtn.style.alignSelf = 'flex-end';
+        cancelBtn.addEventListener('click', cancelEditReview);
+        
+        const submitBtn = document.querySelector('#review-submit-form button[type="submit"]');
+        submitBtn.parentNode.appendChild(cancelBtn);
+    }
+    
+    const commentTextarea = document.getElementById('review-comment-text');
+    if (commentTextarea) commentTextarea.value = comment;
+    
+    const ratingInput = document.getElementById('review-rating-value');
+    if (ratingInput) {
+        ratingInput.value = rating;
+        const starBtns = document.querySelectorAll('#review-star-rating .star-btn');
+        starBtns.forEach(sb => {
+            const sbVal = parseInt(sb.getAttribute('data-value'));
+            if (sbVal <= rating) {
+                sb.style.color = 'var(--accent-gold)';
+            } else {
+                sb.style.color = '#4b5563';
+            }
+        });
+    }
+    
+    document.querySelector('.add-review-form').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEditReview() {
+    currentEditingReviewId = null;
+    
+    const formTitle = document.querySelector('.add-review-form h4');
+    if (formTitle) formTitle.innerText = "Viết đánh giá của bạn";
+    
+    const formBtn = document.querySelector('#review-submit-form button[type="submit"]');
+    if (formBtn) formBtn.innerText = "Gửi đánh giá";
+    
+    const cancelBtn = document.getElementById('btn-cancel-edit');
+    if (cancelBtn) cancelBtn.remove();
+    
+    const commentTextarea = document.getElementById('review-comment-text');
+    if (commentTextarea) commentTextarea.value = '';
+    
+    const ratingInput = document.getElementById('review-rating-value');
+    if (ratingInput) {
+        ratingInput.value = 5;
+        const starBtns = document.querySelectorAll('#review-star-rating .star-btn');
+        starBtns.forEach(sb => {
+            sb.style.color = 'var(--accent-gold)';
+        });
+    }
+}
+
+function toggleReplyForm(reviewId) {
+    const form = document.getElementById(`reply-form-${reviewId}`);
+    if (form) {
+        form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+        if (form.style.display === 'flex') {
+            const input = document.getElementById(`reply-input-${reviewId}`);
+            if (input) input.focus();
+        }
+    }
+}
+
+async function submitReply(reviewId, locationName) {
+    const input = document.getElementById(`reply-input-${reviewId}`);
+    if (!input) return;
+    const comment = input.value.trim();
+    if (!comment) {
+        showToast('Vui lòng nhập nội dung bình luận');
+        return;
+    }
+    
+    showLoading('Đang gửi bình luận...');
+    try {
+        await apiCreateReviewComment(reviewId, comment);
+        hideLoading();
+        showToast('Bình luận phản hồi thành công!', 'success');
+        loadReviews(locationName);
+    } catch (err) {
+        hideLoading();
+        showToast(err.message);
+    }
+}
+
 // Bind to window for inline onclick actions
 window.handleApproveReview = handleApproveReview;
 window.handleDeleteReview = handleDeleteReview;
+window.handleEditClick = handleEditClick;
+window.toggleReplyForm = toggleReplyForm;
+window.submitReply = submitReply;
 
 function initReviewsForm(locationName) {
     const locationId = SPOT_IDS[locationName] || 1;
@@ -745,21 +908,35 @@ function initReviewsForm(locationName) {
 
         showLoading('Đang gửi đánh giá...');
         try {
-            await apiCreateReview(locationId, rating, comment);
-            hideLoading();
-            document.getElementById('review-comment-text').value = '';
-            
-            const role = getUserRole();
-            const isAdminOrMod = (role === 'admin' || role === 'moderator');
-
-            if (isAdminOrMod) {
-                showToast('Gửi bình luận thành công!', 'success');
+            if (currentEditingReviewId) {
+                await apiUpdateReview(currentEditingReviewId, rating, comment);
+                cancelEditReview();
+                hideLoading();
+                
+                const role = getUserRole();
+                const isAdminOrMod = (role === 'admin' || role === 'moderator');
+                if (isAdminOrMod) {
+                    showToast('Cập nhật đánh giá thành công!', 'success');
+                } else {
+                    showToast('Cập nhật thành công! Chờ duyệt lại.', 'success');
+                }
             } else {
-                showToast('Gửi bình luận thành công! Chờ duyệt.', 'success');
-                const note = document.getElementById('review-form-note');
-                if (note) {
-                    note.style.display = 'block';
-                    setTimeout(() => { note.style.display = 'none'; }, 5000);
+                await apiCreateReview(locationId, rating, comment);
+                hideLoading();
+                document.getElementById('review-comment-text').value = '';
+                
+                const role = getUserRole();
+                const isAdminOrMod = (role === 'admin' || role === 'moderator');
+
+                if (isAdminOrMod) {
+                    showToast('Gửi bình luận thành công!', 'success');
+                } else {
+                    showToast('Gửi bình luận thành công! Chờ duyệt.', 'success');
+                    const note = document.getElementById('review-form-note');
+                    if (note) {
+                        note.style.display = 'block';
+                        setTimeout(() => { note.style.display = 'none'; }, 5000);
+                    }
                 }
             }
             

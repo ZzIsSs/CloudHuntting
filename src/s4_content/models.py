@@ -54,4 +54,13 @@ class Review(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+class ReviewComment(Base):
+    __tablename__ = "review_comments"
+    id = Column(Integer, primary_key=True, index=True)
+    review_id = Column(Integer, ForeignKey("reviews.id"), index=True, nullable=False)
+    user_id = Column(Integer, index=True, nullable=False) # Maps to Users.id
+    comment = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 

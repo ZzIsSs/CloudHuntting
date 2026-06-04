@@ -6,7 +6,7 @@ Tài liệu này tóm tắt cấu trúc dữ liệu, các endpoints và code Jav
 
 ## 📂 1. Cấu trúc Đối tượng Đánh giá (Review Object Structure)
 
-Khi lấy danh sách đánh giá từ API, một đối tượng bình luận chi tiết (`ReviewDetailOut`) sẽ có cấu trúc JSON như sau:
+Khi lấy danh sách đánh giá từ API, một đối tượng bình luận chi tiết (`ReviewDetailOut`) sẽ có cấu trúc JSON lồng nhau như sau:
 
 ```json
 {
@@ -20,7 +20,17 @@ Khi lấy danh sách đánh giá từ API, một đối tượng bình luận ch
   "is_approved": true,
   "helpful_count": 5,
   "created_at": "2026-06-04T13:00:00Z",
-  "updated_at": "2026-06-04T13:15:00Z"
+  "updated_at": "2026-06-04T13:15:00Z",
+  "comments": [
+    {
+      "id": 1,
+      "review_id": 12,
+      "user_id": 4,
+      "username": "moderator",
+      "comment": "Cảm ơn bạn đã chia sẻ trải nghiệm!",
+      "created_at": "2026-06-04T13:10:00Z"
+    }
+  ]
 }
 ```
 
@@ -31,11 +41,12 @@ Khi lấy danh sách đánh giá từ API, một đối tượng bình luận ch
 *   `comment` (string, optional): Nội dung chữ của bình luận.
 *   `image_url` (string, optional): Đường dẫn ảnh đính kèm do người dùng tải lên.
 *   `user_id` (int): ID người viết bình luận.
-*   `username` (string): Tên tài khoản người viết (đã được tự động JOIN để lấy ra tên thay vì hiển thị ID thô).
+*   `username` (string): Tên tài khoản người viết.
 *   `is_approved` (boolean): Trạng thái duyệt (chỉ Admin/Moderator mới thấy trạng thái `false`).
 *   `helpful_count` (int): Số lượt người dùng khác bình chọn "Hữu ích" (Like).
 *   `created_at` (ISO Datetime): Thời điểm viết bình luận.
 *   `updated_at` (ISO Datetime, optional): Thời điểm chỉnh sửa bình luận gần nhất.
+*   `comments` (array): Danh sách các phản hồi/bình luận con lồng bên dưới.
 
 ---
 
@@ -63,12 +74,12 @@ Tất cả các endpoints dưới đây đều đi qua Gateway qua tiền tố `
 ### 2.2. Lấy danh sách bình luận công khai (dành cho mọi user/khách vãng lai)
 *   **Endpoint:** `GET /content/reviews/location/{location_id}`
 *   **Request Params:** `skip` (mặc định 0), `limit` (mặc định 10)
-*   **Response:** Trả về danh sách dạng mảng chứa các bình luận **đã được duyệt** (`is_approved = true`).
+*   **Response:** Trả về danh sách dạng mảng chứa các bình luận **đã được duyệt** (`is_approved = true`) kèm danh sách `comments` lồng phía dưới.
 
 ### 2.3. Lấy toàn bộ bình luận kiểm duyệt (chỉ dành cho Admin / Moderator)
 *   **Endpoint:** `GET /content/reviews/location/{location_id}/all`
 *   **Headers:** `Authorization: Bearer <JWT_TOKEN>`
-*   **Response:** Trả về mảng chứa toàn bộ bình luận (bao gồm cả các bình luận đang chờ duyệt `is_approved = false`).
+*   **Response:** Trả về mảng chứa toàn bộ bình luận (bao gồm cả các bình luận đang chờ duyệt `is_approved = false`) kèm danh sách `comments` lồng phía dưới.
 
 ### 2.4. Phê duyệt bình luận (chỉ dành cho Admin / Moderator)
 *   **Endpoint:** `PUT /content/reviews/{review_id}/approve`
@@ -86,16 +97,28 @@ Tất cả các endpoints dưới đây đều đi qua Gateway qua tiền tố `
       "image_url": "https://url-anh-moi.jpg"
     }
     ```
-*   **Lưu ý:** Sau khi chỉnh sửa, nếu người chỉnh sửa là `user` thường thì bình luận sẽ tự động bị ẩn đi và chuyển về trạng thái chờ duyệt (`is_approved = false`).
+*   **Lưu ý:** Sau khi chỉnh sửa, nếu người chỉnh sửa là `user` thường thì bình luận sẽ tự động bị ẩn đi và chuyển về trạng thái chờ duyệt (`is_approved = false`) để kiểm duyệt lại.
 
 ### 2.6. Thích bình luận / Đánh giá bình luận Hữu ích (Công khai)
 *   **Endpoint:** `POST /content/reviews/{review_id}/helpful`
 *   **Response:** Tăng trường `helpful_count` lên 1 và trả về đối tượng bình luận mới.
 
-### 2.7. Xóa bình luận (Tác giả hoặc Admin / Moderator)
+### 2.7. Xóa bình luận (CHỈ dành cho tài khoản Admin)
 *   **Endpoint:** `DELETE /content/reviews/{review_id}`
 *   **Headers:** `Authorization: Bearer <JWT_TOKEN>`
+*   **Lưu ý:** Chỉ tài khoản có role `admin` mới có quyền xóa. User thường và Moderator khi gọi API này sẽ nhận mã lỗi `403 Forbidden`. Xóa review sẽ tự động xóa toàn bộ comments con liên kết.
 *   **Response:** Trạng thái `204 No Content` nếu xóa thành công.
+
+### 2.8. Bình luận/Phản hồi vào đánh giá của người khác
+*   **Endpoint:** `POST /content/reviews/{review_id}/comments`
+*   **Headers:** `Authorization: Bearer <JWT_TOKEN>`
+*   **Request Body (JSON):**
+    ```json
+    {
+      "comment": "Nội dung phản hồi của bạn..."
+    }
+    ```
+*   **Response:** Trả về đối tượng bình luận con vừa tạo (chứa `id`, `review_id`, `user_id`, `username`, `comment`, `created_at`).
 
 ---
 
@@ -114,7 +137,7 @@ function getAuthHeaders() {
     };
 }
 
-// 1. Lấy bình luận đã duyệt
+// 1. Lấy bình luận đã duyệt kèm bình luận phản hồi lồng bên dưới
 async function fetchPublicReviews(locationId) {
     const res = await fetch(`${API_BASE}/content/reviews/location/${locationId}`);
     if (!res.ok) throw new Error("Không thể tải bình luận");
@@ -149,7 +172,7 @@ async function likeReview(reviewId) {
     return await res.json();
 }
 
-// 4. Sửa bình luận
+// 4. Sửa bình luận (chỉ dành cho tác giả)
 async function editReview(reviewId, rating, comment, imageUrl = null) {
     const res = await fetch(`${API_BASE}/content/reviews/${reviewId}`, {
         method: 'PUT',
@@ -163,7 +186,7 @@ async function editReview(reviewId, rating, comment, imageUrl = null) {
     return await res.json();
 }
 
-// 5. Duyệt bình luận (Admin)
+// 5. Duyệt bình luận (Admin / Moderator)
 async function approveReview(reviewId) {
     const res = await fetch(`${API_BASE}/content/reviews/${reviewId}/approve`, {
         method: 'PUT',
@@ -173,7 +196,7 @@ async function approveReview(reviewId) {
     return await res.json();
 }
 
-// 6. Xóa bình luận
+// 6. Xóa bình luận (CHỈ dành cho Admin)
 async function deleteReview(reviewId) {
     const res = await fetch(`${API_BASE}/content/reviews/${reviewId}`, {
         method: 'DELETE',
@@ -181,5 +204,21 @@ async function deleteReview(reviewId) {
     });
     if (!res.ok) throw new Error("Xóa bình luận thất bại");
     return true;
+}
+
+// 7. Tạo bình luận phản hồi lồng bên dưới đánh giá
+async function createReviewComment(reviewId, commentText) {
+    const res = await fetch(`${API_BASE}/content/reviews/${reviewId}/comments`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+            comment: commentText
+        })
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Bình luận thất bại");
+    }
+    return await res.json();
 }
 ```

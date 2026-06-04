@@ -191,3 +191,17 @@ async function apiDeleteReview(reviewId) {
     return await apiRequest('DELETE', `/content/reviews/${reviewId}`);
 }
 
+async function apiUpdateReview(reviewId, rating, comment) {
+    return await apiRequest('PUT', `/content/reviews/${reviewId}`, {
+        rating: parseInt(rating),
+        comment: comment
+    });
+}
+
+async function apiCreateReviewComment(reviewId, comment) {
+    return await apiRequest('POST', `/content/reviews/${reviewId}/comments`, {
+        comment: comment
+    });
+}
+
+

@@ -77,6 +77,23 @@ class ReviewUpdate(BaseModel):
     comment: Optional[str] = None
     image_url: Optional[str] = None
 
+# REVIEW COMMENTS
+class ReviewCommentCreate(BaseModel):
+    comment: str = Field(..., min_length=1, description="Comment content")
+
+class ReviewCommentOut(BaseModel):
+    id: int
+    review_id: int
+    user_id: int
+    comment: str
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class ReviewCommentDetailOut(ReviewCommentOut):
+    username: str
+
 class ReviewOut(ReviewBase):
     id: int
     user_id: int
@@ -90,5 +107,7 @@ class ReviewOut(ReviewBase):
 
 class ReviewDetailOut(ReviewOut):
     username: str
+    comments: List[ReviewCommentDetailOut] = []
+
 
 
