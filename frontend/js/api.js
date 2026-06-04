@@ -47,15 +47,27 @@ async function apiRequest(method, path, body = null) {
     }
 
     const response = await fetch(`${API_BASE}${path}`, options);
-    const data = await response.json();
+    
+    let data = null;
+    if (response.status !== 204) {
+        const text = await response.text();
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                data = { detail: text };
+            }
+        }
+    }
 
     if (!response.ok) {
-        const errorMsg = data.detail || data.message || `Loi ${response.status}`;
+        const errorMsg = (data && (data.detail || data.message)) || `Loi ${response.status}`;
         throw new Error(errorMsg);
     }
 
     return data;
 }
+
 
 // ─── S3 Auth API ────────────────────────────────────────────
 
