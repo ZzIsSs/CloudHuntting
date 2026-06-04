@@ -18,6 +18,7 @@ if not os.path.exists(PYTHON):
 # Danh sach cac service can khoi dong (theo thu tu uu tien)
 SERVICES = [
     {"name": "S3 Auth",       "module": "src.s3_auth.main:app",       "port": 8003},
+    {"name": "S4 Content",    "module": "src.s4_content.main:app",    "port": 8004},
     {"name": "S5 Statistics",  "module": "src.s5_statistics.main:app",  "port": 8005},
     {"name": "S1 Metrics",     "module": "src.s1_metrics.main:app",     "port": 8001},
     {"name": "S2 Booking",     "module": "src.s2_booking.main:app",     "port": 8002},

@@ -74,7 +74,12 @@ class ReviewCreate(ReviewBase):
 class ReviewOut(ReviewBase):
     id: int
     user_id: int
+    is_approved: bool
     created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+class ReviewDetailOut(ReviewOut):
+    username: str
+

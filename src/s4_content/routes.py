@@ -163,8 +163,11 @@ def create_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Tự động duyệt nếu là admin hoặc moderator
+    is_approved = current_user.role in [RoleEnum.admin, RoleEnum.moderator]
     new_review = models.Review(
         user_id=current_user.id,
+        is_approved=is_approved,
         **review_in.dict()
     )
     db.add(new_review)
@@ -172,8 +175,81 @@ def create_review(
     db.refresh(new_review)
     return new_review
 
-@router.get("/reviews/location/{location_id}", response_model=List[schemas.ReviewOut])
+@router.get("/reviews/location/{location_id}", response_model=List[schemas.ReviewDetailOut])
 def get_location_reviews(location_id: int, skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    # Public endpoint: No auth required to view reviews
-    reviews = db.query(models.Review).filter(models.Review.location_id == location_id).offset(skip).limit(limit).all()
-    return reviews
+    # Public endpoint: Chỉ lấy review đã duyệt, trả kèm tên tài khoản (username)
+    results = db.query(
+        models.Review.id,
+        models.Review.user_id,
+        User.username,
+        models.Review.location_id,
+        models.Review.rating,
+        models.Review.comment,
+        models.Review.is_approved,
+        models.Review.created_at
+    ).join(User, models.Review.user_id == User.id)\
+     .filter(models.Review.location_id == location_id, models.Review.is_approved == True)\
+     .offset(skip).limit(limit).all()
+    return results
+
+@router.get("/reviews/location/{location_id}/all", response_model=List[schemas.ReviewDetailOut])
+def get_location_reviews_all(
+    location_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Admin/Moderator: Lấy toàn bộ review (cả chưa duyệt) để kiểm duyệt
+    if current_user.role not in [RoleEnum.admin, RoleEnum.moderator]:
+        raise HTTPException(status_code=403, detail="Not enough permissions to view unapproved reviews")
+        
+    results = db.query(
+        models.Review.id,
+        models.Review.user_id,
+        User.username,
+        models.Review.location_id,
+        models.Review.rating,
+        models.Review.comment,
+        models.Review.is_approved,
+        models.Review.created_at
+    ).join(User, models.Review.user_id == User.id)\
+     .filter(models.Review.location_id == location_id)\
+     .all()
+    return results
+
+@router.put("/reviews/{review_id}/approve", response_model=schemas.ReviewOut)
+def approve_review(
+    review_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Chỉ Admin/Moderator mới có quyền duyệt
+    if current_user.role not in [RoleEnum.admin, RoleEnum.moderator]:
+        raise HTTPException(status_code=403, detail="Not enough permissions to approve reviews")
+        
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    review.is_approved = True
+    db.commit()
+    db.refresh(review)
+    return review
+
+@router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_review(
+    review_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    # Chỉ tác giả hoặc Admin/Moderator mới có quyền xóa
+    if current_user.role not in [RoleEnum.admin, RoleEnum.moderator] and review.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions to delete this review")
+        
+    db.delete(review)
+    db.commit()
+    return None
+

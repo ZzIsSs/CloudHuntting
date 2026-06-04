@@ -13,8 +13,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.shared.database import create_tables
+from src.shared.database import create_tables, SessionLocal
 from .routes import router
+from src.s3_auth import models, auth
 
 app = FastAPI(
     title="Auth Service",
@@ -30,12 +31,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def seed_users():
+    db = SessionLocal()
+    try:
+        users_to_seed = [
+            {
+                "username": "admin",
+                "email": "admin@cloudhunting.com",
+                "password": "admin123",
+                "role": models.RoleEnum.admin
+            },
+            {
+                "username": "moderator",
+                "email": "moderator@cloudhunting.com",
+                "password": "moderator123",
+                "role": models.RoleEnum.moderator
+            },
+            {
+                "username": "user",
+                "email": "user@cloudhunting.com",
+                "password": "user123",
+                "role": models.RoleEnum.user
+            }
+        ]
+        
+        for user_data in users_to_seed:
+            existing_user = db.query(models.User).filter(models.User.username == user_data["username"]).first()
+            if not existing_user:
+                hashed = auth.hash_password(user_data["password"])
+                new_user = models.User(
+                    username=user_data["username"],
+                    email=user_data["email"],
+                    hashed_password=hashed,
+                    role=user_data["role"]
+                )
+                db.add(new_user)
+                db.commit()
+                print(f"[Seeder] Da nap tai khoan: {user_data['username']}")
+    except Exception as e:
+        print(f"[Seeder] Loi khi nap du lieu: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
 @app.on_event("startup")
 def on_startup():
     create_tables()
+    seed_users()
 
 app.include_router(router)
 
 @app.get("/health", tags=["Health"])
 def health():
-    return {"service": "s3_auth", "status": "ok"}
+    return {"service": "s3_auth", "status": "ok"}

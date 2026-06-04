@@ -136,3 +136,58 @@ function requireAuth() {
     }
     return true;
 }
+
+// ─── JWT Decoding Helpers ────────────────────────────────────
+
+function getUserRole() {
+    const token = getToken();
+    if (!token) return null;
+    try {
+        const payloadBase64 = token.split('.')[1];
+        const decodedPayload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+        return decodedPayload.role;
+    } catch (e) {
+        console.error('Error decoding user role:', e);
+        return null;
+    }
+}
+
+function getUserId() {
+    const token = getToken();
+    if (!token) return null;
+    try {
+        const payloadBase64 = token.split('.')[1];
+        const decodedPayload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+        return parseInt(decodedPayload.sub);
+    } catch (e) {
+        console.error('Error decoding user ID:', e);
+        return null;
+    }
+}
+
+// ─── S4 Content Reviews & Moderation API ──────────────────────
+
+async function apiGetReviews(locationId) {
+    return await apiRequest('GET', `/content/reviews/location/${locationId}`);
+}
+
+async function apiGetReviewsAll(locationId) {
+    return await apiRequest('GET', `/content/reviews/location/${locationId}/all`);
+}
+
+async function apiCreateReview(locationId, rating, comment) {
+    return await apiRequest('POST', '/content/reviews', {
+        location_id: parseInt(locationId),
+        rating: parseInt(rating),
+        comment: comment
+    });
+}
+
+async function apiApproveReview(reviewId) {
+    return await apiRequest('PUT', `/content/reviews/${reviewId}/approve`);
+}
+
+async function apiDeleteReview(reviewId) {
+    return await apiRequest('DELETE', `/content/reviews/${reviewId}`);
+}
+

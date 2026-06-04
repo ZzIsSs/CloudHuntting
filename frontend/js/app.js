@@ -587,7 +587,190 @@ function initStatsPage() {
 
     document.getElementById('stats-location-name').textContent = locationName;
     loadStatistics(locationName);
+    loadReviews(locationName);
+    initReviewsForm(locationName);
 }
+
+// ─── Community Reviews & Moderation Logic ─────────────────────
+
+const SPOT_IDS = {
+    "Đồi chè Cầu Đất": 1,
+    "Đồi Đa Phú": 2,
+    "Đồi Du Sinh": 3,
+    "Đồi Thiên Phúc Đức": 4,
+    "Trại Mát": 5,
+    "Đỉnh Hòn Bồ": 6,
+    "Đỉnh Pinhatt": 7,
+    "Đỉnh Langbiang": 8,
+    "Đồi Robin": 9,
+    "Đỉnh Rada": 10
+};
+
+async function loadReviews(locationName) {
+    const locationId = SPOT_IDS[locationName] || 1;
+    const reviewsList = document.getElementById('reviews-list');
+    if (!reviewsList) return;
+
+    const role = getUserRole();
+    const currentUserId = getUserId();
+    const isAdminOrMod = (role === 'admin' || role === 'moderator');
+
+    try {
+        let reviews = [];
+        if (isAdminOrMod) {
+            reviews = await apiGetReviewsAll(locationId);
+        } else {
+            reviews = await apiGetReviews(locationId);
+        }
+
+        if (reviews.length === 0) {
+            reviewsList.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: var(--space-lg);">Chưa có bình luận nào cho địa điểm này. Hãy là người đầu tiên chia sẻ trải nghiệm!</div>`;
+            return;
+        }
+
+        reviewsList.innerHTML = reviews.map(rev => {
+            const starsHTML = '★'.repeat(rev.rating) + '☆'.repeat(5 - rev.rating);
+            const dateStr = new Date(rev.created_at).toLocaleDateString('vi-VN', {
+                year: 'numeric', month: 'long', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+            
+            const isPending = !rev.is_approved;
+            const badgeHTML = isPending ? `<span class="review-badge-pending">Chờ duyệt</span>` : '';
+            
+            const showApprove = isAdminOrMod && isPending;
+            const showDelete = isAdminOrMod || (currentUserId && rev.user_id === currentUserId);
+
+            const approveBtn = showApprove ? `<button class="btn-approve" onclick="handleApproveReview(${rev.id}, '${locationName}')">Duyệt</button>` : '';
+            const deleteBtn = showDelete ? `<button class="btn-delete" onclick="handleDeleteReview(${rev.id}, '${locationName}')">Xóa</button>` : '';
+            
+            const actionsHTML = (approveBtn || deleteBtn) ? `
+                <div class="review-actions">
+                    ${approveBtn}
+                    ${deleteBtn}
+                </div>
+            ` : '';
+
+            return `
+                <div class="review-card" data-id="${rev.id}">
+                    <div class="review-header">
+                        <div class="reviewer-info">
+                            <span class="reviewer-name">👤 ${rev.username}</span>
+                            ${badgeHTML}
+                        </div>
+                        <span class="review-stars">${starsHTML}</span>
+                    </div>
+                    <div class="review-body">${rev.comment || ''}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                        <span class="review-date">${dateStr}</span>
+                        ${actionsHTML}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error('Error loading reviews:', err);
+        reviewsList.innerHTML = `<div style="color: var(--accent-red); text-align: center; padding: var(--space-lg);">Lỗi tải bình luận: ${err.message}</div>`;
+    }
+}
+
+async function handleApproveReview(reviewId, locationName) {
+    showLoading('Đang duyệt bình luận...');
+    try {
+        await apiApproveReview(reviewId);
+        hideLoading();
+        showToast('Duyệt bình luận thành công!', 'success');
+        loadReviews(locationName);
+    } catch (err) {
+        hideLoading();
+        showToast(err.message);
+    }
+}
+
+async function handleDeleteReview(reviewId, locationName) {
+    if (!confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) return;
+    showLoading('Đang xóa bình luận...');
+    try {
+        await apiDeleteReview(reviewId);
+        hideLoading();
+        showToast('Xóa bình luận thành công!', 'success');
+        loadReviews(locationName);
+    } catch (err) {
+        hideLoading();
+        showToast(err.message);
+    }
+}
+
+// Bind to window for inline onclick actions
+window.handleApproveReview = handleApproveReview;
+window.handleDeleteReview = handleDeleteReview;
+
+function initReviewsForm(locationName) {
+    const locationId = SPOT_IDS[locationName] || 1;
+    const form = document.getElementById('review-submit-form');
+    if (!form) return;
+
+    const starsContainer = document.getElementById('review-star-rating');
+    const ratingInput = document.getElementById('review-rating-value');
+    
+    if (starsContainer && ratingInput) {
+        const starBtns = starsContainer.querySelectorAll('.star-btn');
+        starBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const val = parseInt(btn.getAttribute('data-value'));
+                ratingInput.value = val;
+                
+                starBtns.forEach(sb => {
+                    const sbVal = parseInt(sb.getAttribute('data-value'));
+                    if (sbVal <= val) {
+                        sb.style.color = 'var(--accent-gold)';
+                    } else {
+                        sb.style.color = '#4b5563';
+                    }
+                });
+            });
+        });
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const rating = parseInt(ratingInput.value);
+        const comment = document.getElementById('review-comment-text').value.trim();
+
+        if (!comment) {
+            showToast('Vui lòng nhập nội dung bình luận');
+            return;
+        }
+
+        showLoading('Đang gửi đánh giá...');
+        try {
+            await apiCreateReview(locationId, rating, comment);
+            hideLoading();
+            document.getElementById('review-comment-text').value = '';
+            
+            const role = getUserRole();
+            const isAdminOrMod = (role === 'admin' || role === 'moderator');
+
+            if (isAdminOrMod) {
+                showToast('Gửi bình luận thành công!', 'success');
+            } else {
+                showToast('Gửi bình luận thành công! Chờ duyệt.', 'success');
+                const note = document.getElementById('review-form-note');
+                if (note) {
+                    note.style.display = 'block';
+                    setTimeout(() => { note.style.display = 'none'; }, 5000);
+                }
+            }
+            
+            loadReviews(locationName);
+        } catch (err) {
+            hideLoading();
+            showToast(err.message);
+        }
+    });
+}
+
 
 async function loadStatistics(locationName) {
     showLoading('Dang tai thong ke...');

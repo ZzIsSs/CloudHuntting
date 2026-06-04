@@ -48,4 +48,6 @@ class Review(Base):
     location_id = Column(Integer, index=True, nullable=False) # Maps to Locations
     rating = Column(Integer, nullable=False) # 1 to 5
     comment = Column(Text, nullable=True)
+    is_approved = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+

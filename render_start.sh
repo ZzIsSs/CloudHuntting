@@ -10,10 +10,14 @@ echo "🚀 Dang khoi dong he thong CloudHunting..."
 uvicorn src.s3_auth.main:app --host 0.0.0.0 --port 8003 &
 echo "  ✓ S3 Auth (port 8003)"
 
+uvicorn src.s4_content.main:app --host 0.0.0.0 --port 8004 &
+echo "  ✓ S4 Content (port 8004)"
+
 uvicorn src.s5_statistics.main:app --host 0.0.0.0 --port 8005 &
 echo "  ✓ S5 Statistics (port 8005)"
 
-sleep 2  # Cho S3 va S5 san sang truoc
+sleep 2  # Cho S3, S4 va S5 san sang truoc
+
 
 uvicorn src.s1_metrics.main:app --host 0.0.0.0 --port 8001 &
 echo "  ✓ S1 Metrics (port 8001)"
