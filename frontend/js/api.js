@@ -47,15 +47,27 @@ async function apiRequest(method, path, body = null) {
     }
 
     const response = await fetch(`${API_BASE}${path}`, options);
-    const data = await response.json();
+    
+    let data = null;
+    if (response.status !== 204) {
+        const text = await response.text();
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                data = { detail: text };
+            }
+        }
+    }
 
     if (!response.ok) {
-        const errorMsg = data.detail || data.message || `Loi ${response.status}`;
+        const errorMsg = (data && (data.detail || data.message)) || `Loi ${response.status}`;
         throw new Error(errorMsg);
     }
 
     return data;
 }
+
 
 // ─── S3 Auth API ────────────────────────────────────────────
 
@@ -136,3 +148,72 @@ function requireAuth() {
     }
     return true;
 }
+
+// ─── JWT Decoding Helpers ────────────────────────────────────
+
+function getUserRole() {
+    const token = getToken();
+    if (!token) return null;
+    try {
+        const payloadBase64 = token.split('.')[1];
+        const decodedPayload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+        return decodedPayload.role;
+    } catch (e) {
+        console.error('Error decoding user role:', e);
+        return null;
+    }
+}
+
+function getUserId() {
+    const token = getToken();
+    if (!token) return null;
+    try {
+        const payloadBase64 = token.split('.')[1];
+        const decodedPayload = JSON.parse(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')));
+        return parseInt(decodedPayload.sub);
+    } catch (e) {
+        console.error('Error decoding user ID:', e);
+        return null;
+    }
+}
+
+// ─── S4 Content Reviews & Moderation API ──────────────────────
+
+async function apiGetReviews(locationId) {
+    return await apiRequest('GET', `/content/reviews/location/${locationId}`);
+}
+
+async function apiGetReviewsAll(locationId) {
+    return await apiRequest('GET', `/content/reviews/location/${locationId}/all`);
+}
+
+async function apiCreateReview(locationId, rating, comment) {
+    return await apiRequest('POST', '/content/reviews', {
+        location_id: parseInt(locationId),
+        rating: parseInt(rating),
+        comment: comment
+    });
+}
+
+async function apiApproveReview(reviewId) {
+    return await apiRequest('PUT', `/content/reviews/${reviewId}/approve`);
+}
+
+async function apiDeleteReview(reviewId) {
+    return await apiRequest('DELETE', `/content/reviews/${reviewId}`);
+}
+
+async function apiUpdateReview(reviewId, rating, comment) {
+    return await apiRequest('PUT', `/content/reviews/${reviewId}`, {
+        rating: parseInt(rating),
+        comment: comment
+    });
+}
+
+async function apiCreateReviewComment(reviewId, comment) {
+    return await apiRequest('POST', `/content/reviews/${reviewId}/comments`, {
+        comment: comment
+    });
+}
+
+

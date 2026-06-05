@@ -25,8 +25,8 @@ SERVICES = {
     },
     "s4_content": {
         "name": "S4 - Nội dung & CSKH (Content)",
-        "url": os.getenv("S4_URL", "http://127.0.0.1:8003"),  # Mount chung với S3 (shared database)
-        "prefix": "/content",
+        "url": os.getenv("S4_URL", "http://127.0.0.1:8004"),
+        "prefix": "/api/v1/content",
         "description": "Quản lý bài viết, đánh giá, hỗ trợ khách hàng"
     },
     "s5_statistics": {

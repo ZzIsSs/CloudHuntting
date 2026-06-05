@@ -48,4 +48,19 @@ class Review(Base):
     location_id = Column(Integer, index=True, nullable=False) # Maps to Locations
     rating = Column(Integer, nullable=False) # 1 to 5
     comment = Column(Text, nullable=True)
+    image_url = Column(String(500), nullable=True)
+    is_approved = Column(Boolean, default=False, nullable=False)
+    helpful_count = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+class ReviewComment(Base):
+    __tablename__ = "review_comments"
+    id = Column(Integer, primary_key=True, index=True)
+    review_id = Column(Integer, ForeignKey("reviews.id"), index=True, nullable=False)
+    user_id = Column(Integer, index=True, nullable=False) # Maps to Users.id
+    comment = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+

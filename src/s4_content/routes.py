@@ -163,8 +163,11 @@ def create_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Tự động duyệt nếu là admin hoặc moderator
+    is_approved = current_user.role in [RoleEnum.admin, RoleEnum.moderator]
     new_review = models.Review(
         user_id=current_user.id,
+        is_approved=is_approved,
         **review_in.dict()
     )
     db.add(new_review)
@@ -172,8 +175,251 @@ def create_review(
     db.refresh(new_review)
     return new_review
 
-@router.get("/reviews/location/{location_id}", response_model=List[schemas.ReviewOut])
+@router.get("/reviews/location/{location_id}", response_model=List[schemas.ReviewDetailOut])
 def get_location_reviews(location_id: int, skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    # Public endpoint: No auth required to view reviews
-    reviews = db.query(models.Review).filter(models.Review.location_id == location_id).offset(skip).limit(limit).all()
-    return reviews
+    # Public endpoint: Chỉ lấy review đã duyệt, trả kèm tên tài khoản (username)
+    results = db.query(
+        models.Review.id,
+        models.Review.user_id,
+        User.username,
+        models.Review.location_id,
+        models.Review.rating,
+        models.Review.comment,
+        models.Review.image_url,
+        models.Review.is_approved,
+        models.Review.helpful_count,
+        models.Review.created_at,
+        models.Review.updated_at
+    ).join(User, models.Review.user_id == User.id)\
+     .filter(models.Review.location_id == location_id, models.Review.is_approved == True)\
+     .offset(skip).limit(limit).all()
+
+    review_ids = [r.id for r in results]
+    comments_by_review = {}
+    if review_ids:
+        comments = db.query(
+            models.ReviewComment.id,
+            models.ReviewComment.review_id,
+            models.ReviewComment.user_id,
+            User.username,
+            models.ReviewComment.comment,
+            models.ReviewComment.created_at
+        ).join(User, models.ReviewComment.user_id == User.id)\
+         .filter(models.ReviewComment.review_id.in_(review_ids))\
+         .order_by(models.ReviewComment.created_at.asc())\
+         .all()
+        
+        for c in comments:
+            c_dict = {
+                "id": c.id,
+                "review_id": c.review_id,
+                "user_id": c.user_id,
+                "username": c.username,
+                "comment": c.comment,
+                "created_at": c.created_at
+            }
+            comments_by_review.setdefault(c.review_id, []).append(c_dict)
+
+    reviews_out = []
+    for r in results:
+        reviews_out.append({
+            "id": r.id,
+            "user_id": r.user_id,
+            "username": r.username,
+            "location_id": r.location_id,
+            "rating": r.rating,
+            "comment": r.comment,
+            "image_url": r.image_url,
+            "is_approved": r.is_approved,
+            "helpful_count": r.helpful_count,
+            "created_at": r.created_at,
+            "updated_at": r.updated_at,
+            "comments": comments_by_review.get(r.id, [])
+        })
+    return reviews_out
+
+@router.get("/reviews/location/{location_id}/all", response_model=List[schemas.ReviewDetailOut])
+def get_location_reviews_all(
+    location_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Admin/Moderator: Lấy toàn bộ review (cả chưa duyệt) để kiểm duyệt
+    if current_user.role not in [RoleEnum.admin, RoleEnum.moderator]:
+        raise HTTPException(status_code=403, detail="Not enough permissions to view unapproved reviews")
+        
+    results = db.query(
+        models.Review.id,
+        models.Review.user_id,
+        User.username,
+        models.Review.location_id,
+        models.Review.rating,
+        models.Review.comment,
+        models.Review.image_url,
+        models.Review.is_approved,
+        models.Review.helpful_count,
+        models.Review.created_at,
+        models.Review.updated_at
+    ).join(User, models.Review.user_id == User.id)\
+     .filter(models.Review.location_id == location_id)\
+     .all()
+
+    review_ids = [r.id for r in results]
+    comments_by_review = {}
+    if review_ids:
+        comments = db.query(
+            models.ReviewComment.id,
+            models.ReviewComment.review_id,
+            models.ReviewComment.user_id,
+            User.username,
+            models.ReviewComment.comment,
+            models.ReviewComment.created_at
+        ).join(User, models.ReviewComment.user_id == User.id)\
+         .filter(models.ReviewComment.review_id.in_(review_ids))\
+         .order_by(models.ReviewComment.created_at.asc())\
+         .all()
+        
+        for c in comments:
+            c_dict = {
+                "id": c.id,
+                "review_id": c.review_id,
+                "user_id": c.user_id,
+                "username": c.username,
+                "comment": c.comment,
+                "created_at": c.created_at
+            }
+            comments_by_review.setdefault(c.review_id, []).append(c_dict)
+
+    reviews_out = []
+    for r in results:
+        reviews_out.append({
+            "id": r.id,
+            "user_id": r.user_id,
+            "username": r.username,
+            "location_id": r.location_id,
+            "rating": r.rating,
+            "comment": r.comment,
+            "image_url": r.image_url,
+            "is_approved": r.is_approved,
+            "helpful_count": r.helpful_count,
+            "created_at": r.created_at,
+            "updated_at": r.updated_at,
+            "comments": comments_by_review.get(r.id, [])
+        })
+    return reviews_out
+
+@router.put("/reviews/{review_id}", response_model=schemas.ReviewOut)
+def update_review(
+    review_id: int,
+    review_in: schemas.ReviewUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Cho phép tác giả chỉnh sửa bình luận của mình
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    if review.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions to edit this review")
+        
+    if review_in.rating is not None:
+        review.rating = review_in.rating
+    if review_in.comment is not None:
+        review.comment = review_in.comment
+    if review_in.image_url is not None:
+        review.image_url = review_in.image_url
+        
+    # Reset kiểm duyệt nếu không phải Admin/Mod chỉnh sửa
+    if current_user.role not in [RoleEnum.admin, RoleEnum.moderator]:
+        review.is_approved = False
+        
+    db.commit()
+    db.refresh(review)
+    return review
+
+@router.post("/reviews/{review_id}/helpful", response_model=schemas.ReviewOut)
+def mark_review_helpful(
+    review_id: int,
+    db: Session = Depends(get_db)
+):
+    # Đánh giá bình luận hữu ích (like)
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    review.helpful_count += 1
+    db.commit()
+    db.refresh(review)
+    return review
+
+@router.put("/reviews/{review_id}/approve", response_model=schemas.ReviewOut)
+def approve_review(
+    review_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Chỉ Admin/Moderator mới có quyền duyệt
+    if current_user.role not in [RoleEnum.admin, RoleEnum.moderator]:
+        raise HTTPException(status_code=403, detail="Not enough permissions to approve reviews")
+        
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    review.is_approved = True
+    db.commit()
+    db.refresh(review)
+    return review
+
+@router.delete("/reviews/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_review(
+    review_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    # CHỈ ADMIN mới có quyền xóa Review
+    if current_user.role != RoleEnum.admin:
+        raise HTTPException(status_code=403, detail="Only admins can delete reviews")
+        
+    # Xóa các comment liên quan trước
+    db.query(models.ReviewComment).filter(models.ReviewComment.review_id == review_id).delete()
+    
+    db.delete(review)
+    db.commit()
+    return None
+
+@router.post("/reviews/{review_id}/comments", response_model=schemas.ReviewCommentDetailOut, status_code=status.HTTP_201_CREATED)
+def create_review_comment(
+    review_id: int,
+    comment_in: schemas.ReviewCommentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    new_comment = models.ReviewComment(
+        review_id=review_id,
+        user_id=current_user.id,
+        comment=comment_in.comment
+    )
+    db.add(new_comment)
+    db.commit()
+    db.refresh(new_comment)
+    
+    return schemas.ReviewCommentDetailOut(
+        id=new_comment.id,
+        review_id=new_comment.review_id,
+        user_id=new_comment.user_id,
+        username=current_user.username,
+        comment=new_comment.comment,
+        created_at=new_comment.created_at
+    )
+
+

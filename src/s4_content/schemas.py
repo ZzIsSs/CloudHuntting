@@ -67,14 +67,47 @@ class ReviewBase(BaseModel):
     location_id: int
     rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
     comment: Optional[str] = None
+    image_url: Optional[str] = None
 
 class ReviewCreate(ReviewBase):
     pass
 
-class ReviewOut(ReviewBase):
+class ReviewUpdate(BaseModel):
+    rating: Optional[int] = Field(None, ge=1, le=5, description="Rating from 1 to 5")
+    comment: Optional[str] = None
+    image_url: Optional[str] = None
+
+# REVIEW COMMENTS
+class ReviewCommentCreate(BaseModel):
+    comment: str = Field(..., min_length=1, description="Comment content")
+
+class ReviewCommentOut(BaseModel):
     id: int
+    review_id: int
     user_id: int
+    comment: str
     created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+class ReviewCommentDetailOut(ReviewCommentOut):
+    username: str
+
+class ReviewOut(ReviewBase):
+    id: int
+    user_id: int
+    is_approved: bool
+    helpful_count: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class ReviewDetailOut(ReviewOut):
+    username: str
+    comments: List[ReviewCommentDetailOut] = []
+
+
+

@@ -6,8 +6,13 @@ from src.shared.database import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # ── Bật/tắt xác thực tại đây ──────────────────────────────────────────────
-BYPASS_AUTH = True   # True = bỏ qua auth | False = bật lại auth bình thường
+BYPASS_AUTH = os.getenv("MOCK_AUTH", "true").lower() == "true"   # True = bỏ qua auth | False = bật lại auth bình thường
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def get_current_user(
