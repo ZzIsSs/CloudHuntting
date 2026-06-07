@@ -15,6 +15,12 @@ async def startup_event():
     """
     print("🚀 Đang khởi động Service 1...")
     load_model()
+    
+    # Khởi động Bot tự động chạy ngầm
+    from .tasks import start_bot
+    start_bot()
+    
+    print("[INFO] Service 1 đã sẵn sàng.")
 
 # Đăng ký routes
 app.include_router(s1_router, prefix="/api/s1", tags=["Metrics"])
