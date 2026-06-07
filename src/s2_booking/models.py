@@ -4,12 +4,11 @@
 from sqlalchemy import (
     Column, String, Float, Integer,
     Boolean, Text, Enum as SAEnum,
-    DateTime, ForeignKey
+    DateTime
 )
 from sqlalchemy.sql import func
 import enum
 from .database import Base
-
 
 
 class PlaceCategory(str, enum.Enum):
@@ -34,20 +33,14 @@ class Place(Base):
     lon          = Column(Float,   nullable=False)
     address      = Column(Text,    default="")
     province     = Column(String(100), default="Lâm Đồng")
-    phone        = Column(String(30),  nullable=True)
-    website      = Column(String(255), nullable=True)
     avg_rating   = Column(Float,   default=4.0)
     review_count = Column(Integer, default=0)
     price_level  = Column(Integer, default=2)   # 1=rẻ → 4=đắt
     is_active    = Column(Boolean, default=True)
-    
 
-    # SQLite không có JSON column → lưu dưới dạng Text (JSON string)
-    # Khi đọc ra sẽ json.loads(), khi ghi vào sẽ json.dumps()
+    # SQLite không có JSON column → lưu dạng Text (JSON string)
     amenities_json     = Column(Text, default="[]")
     opening_hours_json = Column(Text, default="{}")
     photos_json        = Column(Text, default="[]")
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-

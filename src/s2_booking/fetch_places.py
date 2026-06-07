@@ -1,11 +1,5 @@
 # src/s2_booking/fetch_places.py
-"""
-Lấy địa điểm thật tại Đà Lạt từ OpenStreetMap qua Overpass API.
-Miễn phí, không cần API key.
 
-Chạy MỘT LẦN trước khi khởi động app:
-    python -m src.s2_booking.fetch_places
-"""
 import requests
 import json
 from pathlib import Path
@@ -46,15 +40,55 @@ def fetch_from_overpass() -> list[dict]:
     """
     print("🌐 Đang gọi Overpass API...")
     resp = requests.post(
-    "https://overpass-api.de/api/interpreter",
-    data={"data": query},
-    timeout=30,
-    headers={"User-Agent": "CloudHuntingApp/1.0 (educational project)"},
+        "https://overpass-api.de/api/interpreter",
+        data={"data": query},
+        timeout=30,
+        headers={"User-Agent": "CloudHuntingApp/1.0 (educational project)"},
     )
     resp.raise_for_status()
     data = resp.json()
     print(f"✅ Nhận {len(data['elements'])} node từ OSM")
     return data["elements"]
+
+
+def _extract_osm_image(tags: dict) -> str | None:
+    """
+    Ưu tiên 1: lấy ảnh thật từ OSM tags.
+    Thứ tự: image → wikimedia_commons → mapillary (dạng URL) → None
+    """
+    raw = tags.get("image") or tags.get("wikimedia_commons") or tags.get("mapillary")
+    if not raw:
+        return None
+
+    # Wikimedia dạng "File:Xyz.jpg" → convert sang URL trực tiếp
+    if raw.startswith("File:"):
+        filename = raw.replace("File:", "").replace(" ", "_")
+        return (
+            f"https://commons.wikimedia.org/wiki/Special:FilePath/"
+            f"{filename}?width=800"
+        )
+
+    # Đã là URL hợp lệ (image hoặc mapillary)
+    if raw.startswith("http"):
+        return raw
+
+    return None
+
+
+def _unsplash_fallback(category: str, place_id: int) -> str:
+    """
+    Ưu tiên 2: Unsplash Source theo category.
+    sig=place_id đảm bảo mỗi địa điểm có ảnh khác nhau nhưng ổn định.
+    """
+    keyword_map = {
+        "cafe":       "coffee,cafe,dalat",
+        "restaurant": "vietnamese,food,restaurant",
+        "homestay":   "cozy,room,interior",
+        "hotel":      "hotel,dalat,vietnam",
+        "camping":    "camping,forest,nature",
+    }
+    kw = keyword_map.get(category, "dalat,vietnam,landscape")
+    return f"https://source.unsplash.com/800x600/?{kw}&sig={place_id}"
 
 
 def parse_element(el: dict, index: int) -> dict | None:
@@ -68,7 +102,7 @@ def parse_element(el: dict, index: int) -> dict | None:
     category = CATEGORY_MAP.get(amenity) or CATEGORY_MAP.get(tourism) or "cafe"
 
     # Amenities
-    amenities = ["cloud_view"]  # tất cả địa điểm ở Đà Lạt đều có view mây
+    amenities = ["cloud_view"]
     if tags.get("internet_access") in ("wlan", "yes", "free"):
         amenities.append("wifi")
     if tags.get("outdoor_seating") == "yes":
@@ -100,6 +134,11 @@ def parse_element(el: dict, index: int) -> dict | None:
     elif "Đà Lạt" not in address:
         address += ", Đà Lạt"
 
+    # ── Ảnh: ưu tiên 1 OSM thật → ưu tiên 2 Unsplash fallback ──────────────
+    osm_image = _extract_osm_image(tags)
+    photo_url = osm_image if osm_image else _unsplash_fallback(category, index)
+    photo_source = "osm" if osm_image else "unsplash"
+
     return {
         "id":           f"pl{index:03d}",
         "name":         name,
@@ -108,12 +147,10 @@ def parse_element(el: dict, index: int) -> dict | None:
         "lon":          round(el["lon"], 6),
         "address":      address,
         "province":     "Lâm Đồng",
-        "phone":        tags.get("phone") or tags.get("contact:phone"),
         "avg_rating":   4.0,
         "review_count": 0,
         "price_level":  price_level,
         "is_active":    True,
-        "is_bookable":  category != "camping",
         "amenities":    list(set(amenities)),
         "opening_hours": {
             "mon": ["07:00","22:00"], "tue": ["07:00","22:00"],
@@ -122,9 +159,10 @@ def parse_element(el: dict, index: int) -> dict | None:
             "sun": ["07:00","22:00"],
         },
         "photos": [{
-            "url":        f"https://picsum.photos/seed/{index}/800/600",
+            "url":        photo_url,
             "is_primary": True,
             "caption":    f"{name} - Đà Lạt",
+            "source":     photo_source,   # "osm" | "unsplash" — debug tiện
         }],
     }
 
@@ -139,6 +177,7 @@ def main():
     places     = []
     seen_names = set()
     index      = 1
+    osm_count  = 0
 
     for el in elements:
         place = parse_element(el, index)
@@ -147,6 +186,8 @@ def main():
         if place["name"] in seen_names:
             continue
         seen_names.add(place["name"])
+        if place["photos"][0]["source"] == "osm":
+            osm_count += 1
         places.append(place)
         index += 1
 
@@ -166,6 +207,8 @@ def main():
     for cat, count in sorted(cats.items(), key=lambda x: order.get(x[0], 99)):
         print(f"   {cat:12s}: {count}")
     print(f"   {'TỔNG':12s}: {len(places)}")
+    print(f"\n  Ảnh OSM thật : {osm_count}/{len(places)}")
+    print(f"   Ảnh Unsplash  : {len(places) - osm_count}/{len(places)}")
     print(f"\n✅ Ghi xong → {OUTPUT_FILE}")
 
 

@@ -1,13 +1,10 @@
 # src/s2_booking/services.py
 import json
 import math
-import uuid
 
-from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from .models import Place, PlaceCategory
-
+from .models import Place
 
 
 # ── Geo helper ────────────────────────────────────────────────────────────────
@@ -22,24 +19,75 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
+# ── Image helper ──────────────────────────────────────────────────────────────
+
+_UNSPLASH_KEYWORDS: dict[str, str] = {
+    "cafe":       "coffee,cafe,dalat",
+    "restaurant": "vietnamese,food,restaurant",
+    "homestay":   "cozy,room,interior",
+    "hotel":      "hotel,dalat,vietnam",
+    "camping":    "camping,forest,nature",
+}
+
+
+def _resolve_photos(photos_json: str, category: str, place_id: str) -> list[dict]:
+    """
+    Trả về danh sách ảnh đã được đảm bảo có URL hợp lệ.
+
+    Logic:
+      - Giữ nguyên ảnh nào đã có URL hợp lệ (osm / unsplash thật).
+      - Ảnh nào URL là picsum.photos (legacy) → thay bằng Unsplash fallback.
+      - Nếu không có ảnh nào → tự sinh 1 ảnh Unsplash fallback.
+    """
+    photos: list[dict] = json.loads(photos_json or "[]")
+
+    # Dùng 3 ký tự cuối place_id làm sig để ảnh ổn định theo địa điểm
+    try:
+        sig = int(place_id.replace("pl", ""))
+    except ValueError:
+        sig = abs(hash(place_id)) % 9999
+
+    kw = _UNSPLASH_KEYWORDS.get(category, "dalat,vietnam,landscape")
+
+    def _fix_url(photo: dict) -> dict:
+        url = photo.get("url", "")
+        if "picsum.photos" in url:
+            photo = {**photo, "url": f"https://source.unsplash.com/800x600/?{kw}&sig={sig}"}
+        return photo
+
+    fixed = [_fix_url(p) for p in photos]
+
+    if not fixed:
+        fixed = [{
+            "url":        f"https://source.unsplash.com/800x600/?{kw}&sig={sig}",
+            "is_primary": True,
+            "caption":    "",
+            "source":     "unsplash",
+        }]
+
+    return fixed
+
+
 def _place_to_dict(place: Place, distance_km: float) -> dict:
+    photos = _resolve_photos(
+        place.photos_json or "[]",
+        place.category or "cafe",
+        place.id,
+    )
     return {
         "id":            place.id,
         "name":          place.name,
         "category":      place.category,
         "address":       place.address or "",
         "province":      place.province or "Lâm Đồng",
-        "phone":         place.phone,
-        "website":       place.website,
         "avg_rating":    place.avg_rating,
         "review_count":  place.review_count,
         "price_level":   place.price_level,
         "amenities":     json.loads(place.amenities_json     or "[]"),
         "opening_hours": json.loads(place.opening_hours_json or "{}"),
-        "photos":        json.loads(place.photos_json        or "[]"),
+        "photos":        photos,
         "distance_km":   distance_km,
     }
-
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -54,7 +102,7 @@ def get_nearby_places(
     category:    str | None       = None,
     price_level: int | None       = None,
     amenities:   list[str] | None = None,
-    sort_by:     str              = "score",  
+    sort_by:     str              = "score",
     page:        int              = 1,
     per_page:    int              = 20,
 ) -> dict:
@@ -63,8 +111,6 @@ def get_nearby_places(
         query = query.filter(Place.category == category)
     if price_level:
         query = query.filter(Place.price_level == price_level)
-
-    
 
     results = []
     for p in query.all():
@@ -88,7 +134,7 @@ def get_nearby_places(
                 (1.0 - min(x[1] / radius_km, 1.0)) * 0.6
                 + (x[0].avg_rating / 5.0) * 0.4
             ),
-            reverse=True
+            reverse=True,
         )
 
     total = len(results)
@@ -104,21 +150,19 @@ def get_nearby_places(
     }
 
 
-
 def get_place_by_id(db: Session, place_id: str) -> Place | None:
     return db.query(Place).filter(Place.id == place_id).first()
 
 
 def search_places(
-    db:       Session,
-    keyword:  str,
-    lat:      float | None = None,
-    lon:      float | None = None,
+    db:      Session,
+    keyword: str,
+    lat:     float | None = None,
+    lon:     float | None = None,
 ) -> list[dict]:
-    """Tìm kiếm theo tên địa điểm."""
     query = db.query(Place).filter(
         Place.is_active == True,
-        Place.name.ilike(f"%{keyword}%")
+        Place.name.ilike(f"%{keyword}%"),
     ).limit(20).all()
 
     results = []
@@ -130,7 +174,6 @@ def search_places(
 
 
 def get_categories(db: Session) -> list[dict]:
-    """Danh sách category kèm số lượng địa điểm."""
     LABELS = {
         "cafe":       "Cà phê",
         "restaurant": "Nhà hàng",
