@@ -20,52 +20,35 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 # ── Image helper ──────────────────────────────────────────────────────────────
-
-_UNSPLASH_KEYWORDS: dict[str, str] = {
-    "cafe":       "coffee,cafe,dalat",
-    "restaurant": "vietnamese,food,restaurant",
-    "homestay":   "cozy,room,interior",
-    "hotel":      "hotel,dalat,vietnam",
-    "camping":    "camping,forest,nature",
-}
+from .image_urls import get_photo_by_place_id
 
 
 def _resolve_photos(photos_json: str, category: str, place_id: str) -> list[dict]:
     """
-    Trả về danh sách ảnh đã được đảm bảo có URL hợp lệ.
-
-    Logic:
-      - Giữ nguyên ảnh nào đã có URL hợp lệ (osm / unsplash thật).
-      - Ảnh nào URL là picsum.photos (legacy) → thay bằng Unsplash fallback.
-      - Nếu không có ảnh nào → tự sinh 1 ảnh Unsplash fallback.
+    Trả về danh sách ảnh hợp lệ.
+    - Ảnh source="osm" | "category" → giữ nguyên.
+    - Ảnh cũ (picsum/unsplash/không có source) → gán vòng tròn theo place_id.
     """
     photos: list[dict] = json.loads(photos_json or "[]")
+    fallback_url = get_photo_by_place_id(category, place_id)
 
-    # Dùng 3 ký tự cuối place_id làm sig để ảnh ổn định theo địa điểm
-    try:
-        sig = int(place_id.replace("pl", ""))
-    except ValueError:
-        sig = abs(hash(place_id)) % 9999
+    def _fix(photo: dict) -> dict:
+        if photo.get("source") in ("osm", "category"):
+            return photo
+        return {**photo, "url": fallback_url, "source": "category"}
 
-    kw = _UNSPLASH_KEYWORDS.get(category, "dalat,vietnam,landscape")
-
-    def _fix_url(photo: dict) -> dict:
-        url = photo.get("url", "")
-        if "picsum.photos" in url:
-            photo = {**photo, "url": f"https://source.unsplash.com/800x600/?{kw}&sig={sig}"}
-        return photo
-
-    fixed = [_fix_url(p) for p in photos]
+    fixed = [_fix(p) for p in photos]
 
     if not fixed:
         fixed = [{
-            "url":        f"https://source.unsplash.com/800x600/?{kw}&sig={sig}",
+            "url":        fallback_url,
             "is_primary": True,
             "caption":    "",
-            "source":     "unsplash",
+            "source":     "category",
         }]
 
     return fixed
+
 
 
 def _place_to_dict(place: Place, distance_km: float) -> dict:

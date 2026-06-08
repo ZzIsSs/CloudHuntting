@@ -1,11 +1,10 @@
 # src/s2_booking/routes.py
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from . import services
 from .database import get_db
-from .schemas import (PlaceOut, NearbyResponse, CategoryItem)
+from .schemas import PlaceOut, NearbyResponse, CategoryItem
 from .dependencies import get_current_user, CurrentUser
 
 
@@ -77,30 +76,12 @@ def get_categories(
     summary="Tìm kiếm địa điểm theo tên",
 )
 def search_places(
-    q:            str         = Query(..., min_length=2, description="Từ khóa tìm kiếm"),
-    lat:          float | None = Query(None, description="Vĩ độ để tính khoảng cách"),
-    lon:          float | None = Query(None, description="Kinh độ để tính khoảng cách"),
-    current_user: CurrentUser  = Depends(get_current_user),
-    db: Session                = Depends(get_db),
+    q:            str            = Query(..., min_length=2, description="Từ khóa tìm kiếm"),
+    lat:          float | None   = Query(None, description="Vĩ độ để tính khoảng cách"),
+    lon:          float | None   = Query(None, description="Kinh độ để tính khoảng cách"),
+    current_user: CurrentUser    = Depends(get_current_user),
+    db: Session                  = Depends(get_db),
 ):
     """Tìm địa điểm theo tên. Truyền lat/lon để hiển thị khoảng cách."""
     results = services.search_places(db, q, lat, lon)
     return [PlaceOut(**p) for p in results]
-
-
-
-@router.get(
-    "/places/{place_id}",
-    response_model=PlaceOut,
-    tags=["Places"],
-    summary="Chi tiết một địa điểm",
-)
-def get_place(
-    place_id:     str,
-    current_user: CurrentUser = Depends(get_current_user),
-    db: Session               = Depends(get_db),
-):
-    place = services.get_place_by_id(db, place_id)
-    if not place:
-        raise HTTPException(404, f"Không tìm thấy địa điểm id={place_id}")
-    return PlaceOut(**services._place_to_dict(place, 0.0))

@@ -22,6 +22,34 @@ CATEGORY_MAP = {
     "camp_site":   "camping",
 }
 
+from .image_urls import get_photo_by_index
+
+# Đếm riêng từng category để gán vòng tròn độc lập khi cào OSM
+_category_counters: dict[str, int] = {}
+
+
+def _next_photo_url(category: str) -> str:
+    """Fallback: URL ảnh vòng tròn từ image_urls.py theo category."""
+    idx = _category_counters.get(category, 0)
+    _category_counters[category] = idx + 1
+    return get_photo_by_index(category, idx)
+
+
+def _extract_osm_image(tags: dict) -> str | None:
+    """
+    Ưu tiên 1: lấy ảnh thật từ OSM tags nếu có.
+    Thứ tự: image → wikimedia_commons → mapillary
+    """
+    raw = tags.get("image") or tags.get("wikimedia_commons") or tags.get("mapillary")
+    if not raw:
+        return None
+    if raw.startswith("File:"):
+        filename = raw.replace("File:", "").replace(" ", "_")
+        return f"https://commons.wikimedia.org/wiki/Special:FilePath/{filename}?width=800"
+    if raw.startswith("http"):
+        return raw
+    return None
+
 
 def fetch_from_overpass() -> list[dict]:
     lat_min, lon_min, lat_max, lon_max = DALAT_BBOX
@@ -52,43 +80,16 @@ def fetch_from_overpass() -> list[dict]:
 
 
 def _extract_osm_image(tags: dict) -> str | None:
-    """
-    Ưu tiên 1: lấy ảnh thật từ OSM tags.
-    Thứ tự: image → wikimedia_commons → mapillary (dạng URL) → None
-    """
+    """Ưu tiên 1: lấy ảnh thật từ OSM tags nếu có."""
     raw = tags.get("image") or tags.get("wikimedia_commons") or tags.get("mapillary")
     if not raw:
         return None
-
-    # Wikimedia dạng "File:Xyz.jpg" → convert sang URL trực tiếp
     if raw.startswith("File:"):
         filename = raw.replace("File:", "").replace(" ", "_")
-        return (
-            f"https://commons.wikimedia.org/wiki/Special:FilePath/"
-            f"{filename}?width=800"
-        )
-
-    # Đã là URL hợp lệ (image hoặc mapillary)
+        return f"https://commons.wikimedia.org/wiki/Special:FilePath/{filename}?width=800"
     if raw.startswith("http"):
         return raw
-
     return None
-
-
-def _unsplash_fallback(category: str, place_id: int) -> str:
-    """
-    Ưu tiên 2: Unsplash Source theo category.
-    sig=place_id đảm bảo mỗi địa điểm có ảnh khác nhau nhưng ổn định.
-    """
-    keyword_map = {
-        "cafe":       "coffee,cafe,dalat",
-        "restaurant": "vietnamese,food,restaurant",
-        "homestay":   "cozy,room,interior",
-        "hotel":      "hotel,dalat,vietnam",
-        "camping":    "camping,forest,nature",
-    }
-    kw = keyword_map.get(category, "dalat,vietnam,landscape")
-    return f"https://source.unsplash.com/800x600/?{kw}&sig={place_id}"
 
 
 def parse_element(el: dict, index: int) -> dict | None:
@@ -134,10 +135,11 @@ def parse_element(el: dict, index: int) -> dict | None:
     elif "Đà Lạt" not in address:
         address += ", Đà Lạt"
 
-    # ── Ảnh: ưu tiên 1 OSM thật → ưu tiên 2 Unsplash fallback ──────────────
+    # Ưu tiên 1: ảnh thật từ OSM tags (image / wikimedia_commons / mapillary)
+    # Ưu tiên 2: ảnh vòng tròn theo category từ image_urls.py
     osm_image = _extract_osm_image(tags)
-    photo_url = osm_image if osm_image else _unsplash_fallback(category, index)
-    photo_source = "osm" if osm_image else "unsplash"
+    photo_url = osm_image if osm_image else _next_photo_url(category)
+    photo_source = "osm" if osm_image else "category"
 
     return {
         "id":           f"pl{index:03d}",
@@ -162,7 +164,7 @@ def parse_element(el: dict, index: int) -> dict | None:
             "url":        photo_url,
             "is_primary": True,
             "caption":    f"{name} - Đà Lạt",
-            "source":     photo_source,   # "osm" | "unsplash" — debug tiện
+            "source":     photo_source,  # "osm" | "category"
         }],
     }
 
@@ -191,7 +193,6 @@ def main():
         places.append(place)
         index += 1
 
-    # Sắp xếp theo category
     order = {"cafe": 0, "restaurant": 1, "homestay": 2, "hotel": 3, "camping": 4}
     places.sort(key=lambda p: order.get(p["category"], 99))
 
@@ -207,8 +208,8 @@ def main():
     for cat, count in sorted(cats.items(), key=lambda x: order.get(x[0], 99)):
         print(f"   {cat:12s}: {count}")
     print(f"   {'TỔNG':12s}: {len(places)}")
-    print(f"\n  Ảnh OSM thật : {osm_count}/{len(places)}")
-    print(f"   Ảnh Unsplash  : {len(places) - osm_count}/{len(places)}")
+    print(f"\n🖼️  Ảnh OSM thật  : {osm_count}/{len(places)}")
+    print(f"   Ảnh vòng tròn : {len(places) - osm_count}/{len(places)}")
     print(f"\n✅ Ghi xong → {OUTPUT_FILE}")
 
 
