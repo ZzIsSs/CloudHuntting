@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import random
 import math
+from functools import lru_cache
 
 from .schemas import UserPreferenceRequest, PlanBRequest, LocationData, ItineraryStep, ItineraryResponse
 from .database import UserPreferenceLog, NotificationLog
@@ -23,6 +24,7 @@ LOCATIONS = [
 
 import requests
 
+@lru_cache(maxsize=128)
 def geocode_location(address: str) -> tuple[float, float]:
     """
     Sử dụng OpenStreetMap Nominatim API để chuyển đổi địa chỉ dạng text thành tọa độ GPS thực tế.
@@ -63,6 +65,15 @@ def geocode_location(address: str) -> tuple[float, float]:
         
     return default_coords
 
+def calculate_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+@lru_cache(maxsize=512)
 def get_real_route(lat1, lon1, lat2, lon2) -> tuple[float, int]:
     """
     Sử dụng OSRM API để lấy khoảng cách đường bộ (km) và thời gian dự kiến (phút) giữa 2 tọa độ.
@@ -81,12 +92,7 @@ def get_real_route(lat1, lon1, lat2, lon2) -> tuple[float, int]:
         print(f"⚠️ [OSRM] Lỗi gọi API Routing: {e}. Dùng Fallback.")
     
     # Fallback (Đường chim bay nếu lỗi API)
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    dist_km = R * c
+    dist_km = calculate_haversine_distance(lat1, lon1, lat2, lon2)
     return dist_km, int(dist_km * 2) # Giả định tốc độ 30km/h
 
 def save_user_preference(db: Session, req: UserPreferenceRequest):
@@ -115,15 +121,23 @@ def score_locations(req: UserPreferenceRequest) -> list[LocationData]:
     start_lat, start_lon = geocode_location(req.start_location)
     
     for loc in LOCATIONS:
+        # --- BỘ LỌC THÔ (Pre-filtering) ---
+        # 1. Lọc theo phương tiện (Đi ô tô nhưng điểm đến không hỗ trợ -> Loại ngay không cần gọi API)
+        if req.vehicle_type.lower() == "ô tô" and not loc["car_accessible"]:
+            continue
+            
+        # 2. Lọc theo khoảng cách đường chim bay
+        # (Khoảng cách đường chim bay luôn <= đường thực tế. Nếu chim bay đã vượt max thì đường bộ chắc chắn vượt -> Loại luôn)
+        haversine_dist = calculate_haversine_distance(start_lat, start_lon, loc["lat"], loc["lon"])
+        if haversine_dist > req.max_distance_km:
+            continue
+            
+        # --- GỌI API THỰC TẾ ---
         # Tính khoảng cách và thời gian từ điểm xuất phát tới điểm săn mây bằng OSRM
         distance_km, est_travel_mins = get_real_route(start_lat, start_lon, loc["lat"], loc["lon"])
         
         # Hard Filter 1: Vượt quá khoảng cách -> Loại khỏi danh sách
         if distance_km > req.max_distance_km:
-            continue
-            
-        # Hard Filter 2: Đi ô tô nhưng điểm đến không hỗ trợ -> Loại
-        if req.vehicle_type.lower() == "ô tô" and not loc["car_accessible"]:
             continue
             
         # Gọi qua S1 và S5
@@ -329,13 +343,20 @@ def switch_to_plan_b(req: PlanBRequest) -> ItineraryResponse:
         if loc["name"] == req.current_target_location:
             continue
             
-        # Khoảng cách từ điểm săn mây "cũ" tới điểm "mới"
-        distance_km, est_travel_mins = get_real_route(target_loc["lat"], target_loc["lon"], loc["lat"], loc["lon"])
-        
+        # --- BỘ LỌC THÔ ---
         # Hard filter: Không đi được ô tô thì loại
         if req.vehicle_type.lower() == "ô tô" and not loc["car_accessible"]:
             continue
             
+        # Lọc thô khoảng cách: Nếu khoảng cách chim bay từ điểm cũ sang điểm mới quá xa (> 15km) -> Loại luôn
+        haversine_dist = calculate_haversine_distance(target_loc["lat"], target_loc["lon"], loc["lat"], loc["lon"])
+        if haversine_dist > 15.0:
+            continue
+            
+        # --- GỌI API THỰC TẾ ---
+        # Khoảng cách từ điểm săn mây "cũ" tới điểm "mới"
+        distance_km, est_travel_mins = get_real_route(target_loc["lat"], target_loc["lon"], loc["lat"], loc["lon"])
+        
         prob = fetch_s1_prediction(loc["name"], loc["lat"], loc["lon"])
         trend = fetch_s5_trend(loc["name"])
         score = prob
