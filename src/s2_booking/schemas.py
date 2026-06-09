@@ -1,7 +1,6 @@
 # src/s2_booking/schemas.py
 from pydantic import BaseModel, computed_field
 from typing import Optional
-from datetime import date, datetime
 import enum
 
 
@@ -13,24 +12,18 @@ class PlaceCategoryEnum(str, enum.Enum):
     camping    = "camping"
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# PLACE SCHEMAS
-# ══════════════════════════════════════════════════════════════════════════════
-
 class PlaceOut(BaseModel):
-    id: str
-    name: str
-    category: str
-    address: str
-    province: str
-    phone: Optional[str]
-    website: Optional[str]
-    avg_rating: float
+    id:           str
+    name:         str
+    category:     str
+    address:      str
+    province:     str
+    avg_rating:   float
     review_count: int
-    price_level: int
-    amenities: list[str]
-    photos: list[dict]
-    distance_km: float
+    price_level:  int
+    amenities:    list[str]
+    photos:       list[dict]
+    distance_km:  float
 
     @computed_field
     @property
@@ -43,7 +36,7 @@ class PlaceOut(BaseModel):
     @property
     def price_label(self) -> str:
         return {1: "Rẻ", 2: "Trung bình", 3: "Khá đắt", 4: "Đắt"}.get(self.price_level, "")
-    
+
     @computed_field
     @property
     def primary_photo_url(self) -> Optional[str]:
@@ -56,10 +49,10 @@ class PlaceOut(BaseModel):
 
 
 class NearbyResponse(BaseModel):
-    places: list[PlaceOut]
-    page: int
+    places:   list[PlaceOut]
+    page:     int
     per_page: int
-    total: int
+    total:    int
     has_next: bool
 
 

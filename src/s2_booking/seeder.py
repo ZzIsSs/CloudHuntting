@@ -33,12 +33,10 @@ def seed_places(db: Session) -> None:
             lon                = p["lon"],
             address            = p.get("address", ""),
             province           = p.get("province", "Lâm Đồng"),
-            phone              = p.get("phone"),
             avg_rating         = p.get("avg_rating", 4.0),
             review_count       = p.get("review_count", 0),
             price_level        = p.get("price_level", 2),
             is_active          = p.get("is_active", True),
-            # is_bookable đã xóa
             amenities_json     = json.dumps(p.get("amenities",     []), ensure_ascii=False),
             opening_hours_json = json.dumps(p.get("opening_hours", {}), ensure_ascii=False),
             photos_json        = json.dumps(p.get("photos",        []), ensure_ascii=False),
