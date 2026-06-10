@@ -5,11 +5,12 @@ import os
 
 # Đường dẫn file DB (lưu trong cùng thư mục của S5)
 DB_PATH = os.path.join(os.path.dirname(__file__), "cloud_hunting.db")
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
+SQLALCHEMY_DATABASE_URL = os.getenv("S5_DATABASE_URL", f"sqlite:///{DB_PATH}")
 
 # Cấu hình connect args cho SQLite (check_same_thread=False để dùng trong web server)
+connect_args = {"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL, connect_args=connect_args
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
