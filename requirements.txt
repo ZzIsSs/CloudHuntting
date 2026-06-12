@@ -7,6 +7,7 @@ pydantic[email]>=2.0.0
 
 # Database
 sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
 
 # Auth / JWT
 python-jose[cryptography]>=3.3.0
