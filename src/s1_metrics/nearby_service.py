@@ -20,21 +20,8 @@ HOTSPOTS = [
 
 def get_real_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
-    Tính khoảng cách đường bộ (km) giữa 2 tọa độ GPS bằng OSRM API.
-    Nếu API lỗi, tự động Fallback về công thức đường chim bay Haversine.
+    Tính khoảng cách đường chim bay (Haversine) để triệt tiêu hoàn toàn độ trễ 8-10s.
     """
-    try:
-        url = f"https://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
-        response = requests.get(url, timeout=2)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("routes") and len(data["routes"]) > 0:
-                distance_meters = data["routes"][0]["distance"]
-                return round(distance_meters / 1000.0, 2)
-    except Exception as e:
-        print(f"⚠️ [Distance] Lỗi OSRM API: {e}. Fallback về Haversine.")
-        
-    # Fallback Haversine
     R = 6371.0  # Bán kính Trái Đất (km)
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -43,6 +30,31 @@ def get_real_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> flo
          math.sin(dlon / 2) ** 2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return round(R * c, 2)
+
+def find_nearest_hotspot(lat: float, lon: float, max_radius_km: float = 10.0) -> dict | None:
+    """
+    Tìm hotspot gần nhất trong bán kính max_radius_km. Dùng khoảng cách đường chim bay cho nhanh.
+    Phục vụ cho luồng Smart Fallback.
+    """
+    min_dist = float('inf')
+    nearest = None
+    
+    for spot in HOTSPOTS:
+        # Tạm dùng Haversine để ước lượng nhanh
+        R = 6371.0
+        dlat = math.radians(spot["lat"] - lat)
+        dlon = math.radians(spot["lon"] - lon)
+        a = (math.sin(dlat / 2) ** 2 +
+             math.cos(math.radians(lat)) * math.cos(math.radians(spot["lat"])) *
+             math.sin(dlon / 2) ** 2)
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        dist = round(R * c, 2)
+        
+        if dist < min_dist and dist <= max_radius_km:
+            min_dist = dist
+            nearest = {"name": spot["name"], "lat": spot["lat"], "lon": spot["lon"], "distance_km": dist}
+            
+    return nearest
 
 def scan_nearby_spots(location_name: str, radius_km: float, forecast_hours: int = 0) -> dict:
     """
