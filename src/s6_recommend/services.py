@@ -2,29 +2,27 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import random
 import math
-from functools import lru_cache
 
 from .schemas import UserPreferenceRequest, PlanBRequest, LocationData, ItineraryStep, ItineraryResponse
 from .database import UserPreferenceLog, NotificationLog
 from .integrations import fetch_s1_prediction, fetch_s5_trend
 
-# Danh sách 10 địa điểm săn mây Đà Lạt kèm tọa độ (giả lập/tương đối) và độ khó (1-5)
-LOCATIONS = [
-    {"name": "Đồi chè Cầu Đất", "lat": 11.896, "lon": 108.536, "style": "Sống ảo nhẹ nhàng", "vibe": "Thương mại", "car_accessible": True},
-    {"name": "Đồi Đa Phú", "lat": 11.979, "lon": 108.431, "style": "Sống ảo nhẹ nhàng", "vibe": "Hoang sơ", "car_accessible": False},
-    {"name": "Đồi Du Sinh", "lat": 11.936, "lon": 108.411, "style": "Phượt/Trekking", "vibe": "Hoang sơ", "car_accessible": False},
-    {"name": "Đồi Thiên Phúc Đức", "lat": 11.972, "lon": 108.448, "style": "Sống ảo nhẹ nhàng", "vibe": "Hoang sơ", "car_accessible": False},
-    {"name": "Trại Mát", "lat": 11.938, "lon": 108.494, "style": "Sống ảo nhẹ nhàng", "vibe": "Thương mại", "car_accessible": True},
-    {"name": "Đỉnh Hòn Bồ", "lat": 11.977, "lon": 108.487, "style": "Phượt/Trekking", "vibe": "Hoang sơ", "car_accessible": False},
-    {"name": "Đỉnh Pinhatt", "lat": 11.884, "lon": 108.423, "style": "Phượt/Trekking", "vibe": "Hoang sơ", "car_accessible": False},
-    {"name": "Đỉnh Langbiang", "lat": 12.046, "lon": 108.431, "style": "Sống ảo nhẹ nhàng", "vibe": "Thương mại", "car_accessible": True},
-    {"name": "Đồi Robin", "lat": 11.928, "lon": 108.437, "style": "Sống ảo nhẹ nhàng", "vibe": "Thương mại", "car_accessible": True},
-    {"name": "Đỉnh Rada", "lat": 12.046, "lon": 108.431, "style": "Phượt/Trekking", "vibe": "Thương mại", "car_accessible": True}
-]
+import os
+import json
+
+# Đường dẫn tới file JSON lưu cấu hình dùng chung
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HOTSPOTS_JSON_PATH = os.path.join(BASE_DIR, "shared", "hotspots.json")
+
+try:
+    with open(HOTSPOTS_JSON_PATH, "r", encoding="utf-8") as f:
+        LOCATIONS = json.load(f)
+except Exception as e:
+    print(f"⚠️ [S6] Không thể đọc file hotspots.json: {e}")
+    LOCATIONS = []
 
 import requests
 
-@lru_cache(maxsize=128)
 def geocode_location(address: str) -> tuple[float, float]:
     """
     Sử dụng OpenStreetMap Nominatim API để chuyển đổi địa chỉ dạng text thành tọa độ GPS thực tế.
@@ -65,15 +63,6 @@ def geocode_location(address: str) -> tuple[float, float]:
         
     return default_coords
 
-def calculate_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
-
-@lru_cache(maxsize=512)
 def get_real_route(lat1, lon1, lat2, lon2) -> tuple[float, int]:
     """
     Sử dụng OSRM API để lấy khoảng cách đường bộ (km) và thời gian dự kiến (phút) giữa 2 tọa độ.
@@ -85,14 +74,19 @@ def get_real_route(lat1, lon1, lat2, lon2) -> tuple[float, int]:
         if response.status_code == 200:
             data = response.json()
             if data.get("code") == "Ok" and len(data.get("routes", [])) > 0:
-                distance_m = data["routes"][0]["distance"]
-                duration_s = data["routes"][0]["duration"]
-                return distance_m / 1000.0, int(duration_s / 60)
+                distance_km = data["routes"][0]["distance"] / 1000.0
+                # OSRM duration is unrealistic for Dalat roads, calculate time based on 30km/h (2 mins per km)
+                return distance_km, int(distance_km * 2)
     except Exception as e:
         print(f"⚠️ [OSRM] Lỗi gọi API Routing: {e}. Dùng Fallback.")
     
-    # Fallback (Đường chim bay nếu lỗi API)
-    dist_km = calculate_haversine_distance(lat1, lon1, lat2, lon2)
+    # Fallback (Đường chim bay * 1.5 hệ số đường đèo)
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    dist_km = (R * c) * 1.5
     return dist_km, int(dist_km * 2) # Giả định tốc độ 30km/h
 
 def save_user_preference(db: Session, req: UserPreferenceRequest):
@@ -120,24 +114,34 @@ def score_locations(req: UserPreferenceRequest) -> list[LocationData]:
     scored_list = []
     start_lat, start_lon = geocode_location(req.start_location)
     
+    # Parse start_time to check against opening_time
+    try:
+        start_dt = datetime.strptime(req.start_time, "%H:%M")
+        start_hour = start_dt.hour + start_dt.minute / 60.0
+    except:
+        start_hour = 4.0 # Default fallback
+    
     for loc in LOCATIONS:
-        # --- BỘ LỌC THÔ (Pre-filtering) ---
-        # 1. Lọc theo phương tiện (Đi ô tô nhưng điểm đến không hỗ trợ -> Loại ngay không cần gọi API)
-        if req.vehicle_type.lower() == "ô tô" and not loc["car_accessible"]:
-            continue
-            
-        # 2. Lọc theo khoảng cách đường chim bay
-        # (Khoảng cách đường chim bay luôn <= đường thực tế. Nếu chim bay đã vượt max thì đường bộ chắc chắn vượt -> Loại luôn)
-        haversine_dist = calculate_haversine_distance(start_lat, start_lon, loc["lat"], loc["lon"])
-        if haversine_dist > req.max_distance_km:
-            continue
-            
-        # --- GỌI API THỰC TẾ ---
-        # Tính khoảng cách và thời gian từ điểm xuất phát tới điểm săn mây bằng OSRM
-        distance_km, est_travel_mins = get_real_route(start_lat, start_lon, loc["lat"], loc["lon"])
+        # Tính khoảng cách và thời gian chạy xe từ điểm xuất phát tới điểm săn mây bằng OSRM
+        distance_km, est_drive_mins = get_real_route(start_lat, start_lon, loc["lat"], loc["lon"])
+        trekking_mins = loc.get("trekking_mins", 0)
+        total_travel_mins = est_drive_mins + trekking_mins
         
         # Hard Filter 1: Vượt quá khoảng cách -> Loại khỏi danh sách
         if distance_km > req.max_distance_km:
+            continue
+            
+        # Hard Filter 2: Đi ô tô nhưng điểm đến không hỗ trợ -> Loại
+        if req.vehicle_type.lower() == "ô tô" and not loc["car_accessible"]:
+            continue
+            
+        # Hard Filter 3: Check opening time
+        arrive_hour = start_hour + (total_travel_mins / 60.0)
+        # If arrive time > 24, wrap around
+        if arrive_hour >= 24:
+            arrive_hour -= 24
+            
+        if loc.get("opening_time", 0) > 0 and arrive_hour < loc.get("opening_time", 0):
             continue
             
         # Gọi qua S1 và S5
@@ -198,6 +202,15 @@ def generate_itinerary(req: UserPreferenceRequest, best_locations: list[Location
     start_lat, start_lon = geocode_location(req.start_location)
     distance_km, travel_time_mins = get_real_route(start_lat, start_lon, primary_dest.lat, primary_dest.lon)
     
+    # Lấy thêm thời gian trekking từ dữ liệu gốc
+    trekking_mins = 0
+    for loc in LOCATIONS:
+        if loc["name"] == primary_dest.location_name:
+            trekking_mins = loc.get("trekking_mins", 0)
+            break
+            
+    total_travel_mins = travel_time_mins + trekking_mins
+    
     if is_stop_scenario:
         message = "Đã tìm thấy nơi an toàn để dừng chân!"
     elif primary_dest.score < 50:
@@ -211,8 +224,9 @@ def generate_itinerary(req: UserPreferenceRequest, best_locations: list[Location
     except:
         start_dt = datetime.strptime("04:00", "%H:%M")
         
-    arrive_dt = start_dt + timedelta(minutes=travel_time_mins)
-    sunrise_dt = arrive_dt + timedelta(minutes=30)
+    arrive_parking_dt = start_dt + timedelta(minutes=travel_time_mins)
+    arrive_peak_dt = arrive_parking_dt + timedelta(minutes=trekking_mins)
+    sunrise_dt = arrive_peak_dt + timedelta(minutes=30)
     breakfast_dt = sunrise_dt + timedelta(hours=1, minutes=30)
     
     if is_stop_scenario:
@@ -224,7 +238,7 @@ def generate_itinerary(req: UserPreferenceRequest, best_locations: list[Location
                 note="Bật đèn sương mù, di chuyển chậm lại."
             ),
             ItineraryStep(
-                time=arrive_dt.strftime("%H:%M"),
+                time=arrive_parking_dt.strftime("%H:%M"),
                 action="Dừng chân an toàn",
                 location=primary_dest.location_name,
                 lat=primary_dest.lat,
@@ -240,18 +254,37 @@ def generate_itinerary(req: UserPreferenceRequest, best_locations: list[Location
         ]
     else:
         # Thời gian bình minh và chụp ảnh
-        sunrise_dt = arrive_dt + timedelta(minutes=15)
+        sunrise_dt = arrive_peak_dt + timedelta(minutes=15)
         golden_hour_dt = sunrise_dt + timedelta(minutes=30)
         
         timeline = [
             ItineraryStep(
                 time=start_dt.strftime("%H:%M"),
-                action="Thời gian bắt đầu",
+                action="Xuất phát",
                 location=req.start_location,
-                note=f"Bắt đầu xuất phát. Tỷ lệ mây hiện tại: {primary_dest.probability}%."
+                note=f"Khoảng cách: {distance_km:.1f} km. Lái xe dự kiến {travel_time_mins} phút. Tỷ lệ mây: {primary_dest.probability}%."
             ),
             ItineraryStep(
-                time=(start_dt + timedelta(minutes=10)).strftime("%H:%M"),
+                time=arrive_parking_dt.strftime("%H:%M"),
+                action="Đến nơi / Gửi xe",
+                location=primary_dest.location_name,
+                lat=primary_dest.lat,
+                lon=primary_dest.lon,
+                note="Nghỉ ngơi 5 phút, chuẩn bị đèn pin và đồ đạc."
+            )
+        ]
+        
+        if trekking_mins > 0:
+            timeline.append(ItineraryStep(
+                time=arrive_peak_dt.strftime("%H:%M"),
+                action="Lên tới đỉnh",
+                location=primary_dest.location_name,
+                note=f"Đã hoàn tất {trekking_mins} phút leo núi/đi bộ."
+            ))
+            
+        timeline.extend([
+            ItineraryStep(
+                time=(arrive_parking_dt + timedelta(minutes=10)).strftime("%H:%M"),
                 action="Gợi ý điểm dừng chân / Cafe săn mây",
                 location=f"Khu vực quanh {primary_dest.location_name}",
                 lat=primary_dest.lat,
@@ -270,7 +303,7 @@ def generate_itinerary(req: UserPreferenceRequest, best_locations: list[Location
                 location=primary_dest.location_name,
                 note="Ánh sáng rực rỡ nhất (Golden Hour) - Thời điểm hoàn hảo để bắt trọn những bức ảnh để đời."
             )
-        ]
+        ])
     
     return ItineraryResponse(
         user_id=req.user_id,
@@ -343,20 +376,13 @@ def switch_to_plan_b(req: PlanBRequest) -> ItineraryResponse:
         if loc["name"] == req.current_target_location:
             continue
             
-        # --- BỘ LỌC THÔ ---
+        # Khoảng cách từ điểm săn mây "cũ" tới điểm "mới"
+        distance_km, est_travel_mins = get_real_route(target_loc["lat"], target_loc["lon"], loc["lat"], loc["lon"])
+        
         # Hard filter: Không đi được ô tô thì loại
         if req.vehicle_type.lower() == "ô tô" and not loc["car_accessible"]:
             continue
             
-        # Lọc thô khoảng cách: Nếu khoảng cách chim bay từ điểm cũ sang điểm mới quá xa (> 15km) -> Loại luôn
-        haversine_dist = calculate_haversine_distance(target_loc["lat"], target_loc["lon"], loc["lat"], loc["lon"])
-        if haversine_dist > 15.0:
-            continue
-            
-        # --- GỌI API THỰC TẾ ---
-        # Khoảng cách từ điểm săn mây "cũ" tới điểm "mới"
-        distance_km, est_travel_mins = get_real_route(target_loc["lat"], target_loc["lon"], loc["lat"], loc["lon"])
-        
         prob = fetch_s1_prediction(loc["name"], loc["lat"], loc["lon"])
         trend = fetch_s5_trend(loc["name"])
         score = prob

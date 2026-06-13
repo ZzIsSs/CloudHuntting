@@ -1,12 +1,15 @@
+import os
 import requests
 from typing import Dict, Any, List
 
-S1_URL = "http://127.0.0.1:8001/api/s1/predict"
-S5_URL = "http://127.0.0.1:8005/api/s5/statistics"
+S1_BASE = os.getenv("S1_URL", "http://127.0.0.1:8001")
+S5_BASE = os.getenv("S5_URL", "http://127.0.0.1:8005")
+S1_URL = f"{S1_BASE}/api/s1/predict-single"
+S5_URL = f"{S5_BASE}/api/s5/statistics"
 
 def fetch_s1_prediction(location_name: str, lat: float, lon: float) -> float:
     """
-    Gọi S1 để lấy tỷ lệ săn mây hiện tại.
+    Gọi S1 endpoint /predict-single để lấy tỷ lệ săn mây tại tọa độ cụ thể.
     """
     try:
         payload = {
@@ -14,16 +17,15 @@ def fetch_s1_prediction(location_name: str, lat: float, lon: float) -> float:
             "lon": lon,
             "location_name": location_name
         }
-        response = requests.post(S1_URL, json=payload, timeout=5)
+        response = requests.post(S1_URL, json=payload, timeout=10)
         if response.status_code == 200:
             data = response.json()
             return float(data.get("probability", 0.0))
+        print(f"⚠️ S1 trả về status {response.status_code} cho {location_name}")
         return 0.0
     except Exception as e:
-        print(f"Lỗi khi gọi S1 cho {location_name}: {e}")
-        # Giả lập trả về nếu lỗi để hệ thống không sập
-        import random
-        return float(random.randint(40, 90))
+        print(f"❌ Lỗi khi gọi S1 cho {location_name}: {e}")
+        return 0.0
 
 def fetch_s5_trend(location_name: str) -> str:
     """

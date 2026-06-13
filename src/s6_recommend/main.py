@@ -51,4 +51,4 @@ app.include_router(s6_router, prefix="/api/s6", tags=["Recommendation"])
 if __name__ == "__main__":
     import uvicorn
     # Chạy Service 6 ở port 8006
-    uvicorn.run("src.s6_recommend.main:app", host="127.0.0.1", port=8006, reload=True)
+    uvicorn.run("src.s6_recommend.main:app", host="0.0.0.0", port=8006, reload=True)
