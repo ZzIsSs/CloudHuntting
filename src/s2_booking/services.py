@@ -7,7 +7,7 @@ from sqlalchemy import func
 from .models import Place
 
 
-# ── Geo helper ────────────────────────────────────────────────────────────────
+# Giúp tính khoảng cách giữa 2 điểm GPS (lat/lon) bằng công thức Haversine.
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R    = 6371.0
@@ -19,7 +19,7 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
-# ── Image helper ──────────────────────────────────────────────────────────────
+# Phần hình ảnh cho các địa điểm
 from .image_urls import get_photo_by_place_id
 
 
@@ -27,7 +27,7 @@ def _resolve_photos(photos_json: str, category: str, place_id: str) -> list[dict
     """
     Trả về danh sách ảnh hợp lệ.
     - Ảnh source="osm" | "category" → giữ nguyên.
-    - Ảnh cũ (picsum/unsplash/không có source) → gán vòng tròn theo place_id.
+    - Ảnh cũ (không có source) → gán vòng tròn theo place_id.
     """
     photos: list[dict] = json.loads(photos_json or "[]")
     fallback_url = get_photo_by_place_id(category, place_id)
@@ -91,7 +91,7 @@ def get_nearby_places(
 ) -> dict:
     query = db.query(Place).filter(Place.is_active == True)
     if category:
-        query = query.filter(Place.category == category)
+        query = query.filter(Place.category == category.lower().strip())
     if price_level:
         query = query.filter(Place.price_level == price_level)
 
