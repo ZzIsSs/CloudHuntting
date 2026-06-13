@@ -11,7 +11,7 @@ app = FastAPI(
 
 @app.on_event("startup")
 async def startup_event():
-    print("[INFO] Đang khởi động Service 1...")
+    print("[INFO] Starting Service 1...")
     # Load model vào RAM ngay khi startup (dùng load_model đã import ở đầu file)
     load_model()
     
@@ -19,7 +19,7 @@ async def startup_event():
     from .tasks import start_bot
     start_bot()
     
-    print("[INFO] Service 1 đã sẵn sàng.")
+    print("[INFO] Service 1 is ready.")
 
 # Đăng ký routes
 app.include_router(s1_router, prefix="/api/s1", tags=["Metrics"])

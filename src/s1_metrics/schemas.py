@@ -16,9 +16,16 @@ class CloudHuntingRequest(BaseModel):
     radius_km: float = Field(15.0, ge=1.0, le=50.0, description="Bán kính khảo sát tính từ điểm trung tâm (km)")
 
     # Số giờ dự báo trong tương lai (0 = hiện tại, tối đa 72h)
-    forecast_hours: int = Field(0, ge=0, le=72, description="Dự báo trước bao nhiêu giờ (0-72h)")
+    forecast_hours: int = Field(0, ge=0, le=384, description="Dự báo trước bao nhiêu giờ (0-384h, tức là 16 ngày)")
 
 # ─── OUTPUT: Kết quả từng địa điểm ──────────────────────────────────────────
+
+class ConfidenceInfo(BaseModel):
+    """Thông tin mức độ tin cậy của dự báo."""
+    level: str      # "high", "medium", "low", "very_low"
+    percent: int    # 90, 70, 45, 25
+    label: str      # "🟢 Rất tin cậy", "🟡 Tin cậy vừa", ...
+    note: Optional[str] = None
 
 class SpotResult(BaseModel):
     """
@@ -34,6 +41,7 @@ class SpotResult(BaseModel):
     best_time: str = Field(..., description="Thời gian lý tưởng nhất đạt xác suất này")
     suggestion: str = Field(..., description="Lời khuyên cho địa điểm này")
     timeline: Optional[List[dict]] = Field(default=[], description="Chỉ số săn mây theo từng giờ [{time, probability}]")
+    confidence: Optional[ConfidenceInfo] = Field(default=None, description="Độ tin cậy của dự báo")
 
 # ─── OUTPUT: Kết quả tổng hợp ────────────────────────────────────────────────
 
@@ -48,6 +56,12 @@ class CloudHuntingResponse(BaseModel):
     radius_km: float = Field(..., description="Bán kính khảo sát (km)")
     total_spots_found: int = Field(..., description="Tổng số địa điểm tìm được trong bán kính")
     top_spots: List[SpotResult] = Field(..., description="Top 5 địa điểm săn mây xếp hạng từ cao xuống thấp")
+    
+    # Các trường dành cho Smart Fallback (địa điểm lạ lấy data từ hotspot gần nhất)
+    is_estimated: bool = Field(False, description="Dữ liệu có phải là ước tính từ trạm khác không?")
+    estimated_from: Optional[str] = Field(None, description="Tên trạm quan sát gần nhất được dùng làm nguồn data")
+    estimated_distance_km: Optional[float] = Field(None, description="Khoảng cách đến trạm đó")
+    warning: Optional[str] = Field(None, description="Thông báo cảnh báo cho người dùng")
 
 # ─── INPUT/OUTPUT cho endpoint đơn giản (Internal S6 → S1) ────────────────────
 

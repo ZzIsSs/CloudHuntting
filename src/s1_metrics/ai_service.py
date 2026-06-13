@@ -17,9 +17,9 @@ def load_model():
     if _model is None:
         try:
             _model = joblib.load(MODEL_PATH)
-            print(f"[SUCCESS] Đã load mô hình AI thành công từ {MODEL_PATH}")
+            print(f"[SUCCESS] Loaded AI model")
         except Exception as e:
-            print(f"[ERROR] Lỗi khi load mô hình AI: {e}")
+            print(f"[ERROR] Error loading AI model")
             _model = None
 
 from typing import List
