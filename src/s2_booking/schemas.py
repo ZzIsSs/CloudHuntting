@@ -60,3 +60,13 @@ class CategoryItem(BaseModel):
     category: str
     label:    str
     count:    int
+
+class CloudSpotItem(BaseModel):
+    name:        str
+    lat:         float
+    lon:         float
+    
+ 
+ 
+class NearbySpotResponse(NearbyResponse):
+    spot: CloudSpotItem
