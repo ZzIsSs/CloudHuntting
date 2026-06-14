@@ -4,19 +4,19 @@ from .weather_service import WeatherService
 from .ai_service import predict_cloud_probability
 from .geocoding_service import get_coordinates
 
-# ─── Danh sách 10 địa điểm săn mây cố định tại Đà Lạt ───────────────────────
-HOTSPOTS = [
-    {"name": "Đồi chè Cầu Đất",   "lat": 11.896, "lon": 108.536},
-    {"name": "Đồi Đa Phú",         "lat": 11.979, "lon": 108.431},
-    {"name": "Đồi Du Sinh",        "lat": 11.936, "lon": 108.411},
-    {"name": "Đồi Thiên Phúc Đức", "lat": 11.972, "lon": 108.448},
-    {"name": "Trại Mát",           "lat": 11.938, "lon": 108.494},
-    {"name": "Đỉnh Hòn Bồ",       "lat": 11.977, "lon": 108.487},
-    {"name": "Đỉnh Pinhatt",       "lat": 11.884, "lon": 108.423},
-    {"name": "Đỉnh Langbiang",     "lat": 12.046, "lon": 108.431},
-    {"name": "Đồi Robin",          "lat": 11.928, "lon": 108.437},
-    {"name": "Đỉnh Rada",          "lat": 12.044, "lon": 108.440},
-]
+import os
+import json
+
+# Load shared hotspots configuration
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HOTSPOTS_JSON_PATH = os.path.join(BASE_DIR, "shared", "hotspots.json")
+
+try:
+    with open(HOTSPOTS_JSON_PATH, "r", encoding="utf-8") as f:
+        HOTSPOTS = json.load(f)
+except Exception as e:
+    print(f"⚠️ [S1] Không thể đọc file hotspots.json: {e}")
+    HOTSPOTS = []
 
 def get_real_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """

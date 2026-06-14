@@ -5,18 +5,19 @@ import time
 
 # Top 10 địa điểm săn mây nổi tiếng tại Đà Lạt
 # Nguồn: https://www.traveloka.com/vi-vn/explore/destination/dia-diem-san-may-da-lat/193581
-HOTSPOTS = [
-    {"name": "Đồi chè Cầu Đất",   "lat": 11.8392, "lon": 108.5703},
-    {"name": "Đồi Đa Phú",         "lat": 11.9400, "lon": 108.4400},
-    {"name": "Đồi Du Sinh",        "lat": 11.9335, "lon": 108.4110},
-    {"name": "Đồi Thiên Phúc Đức", "lat": 11.9772, "lon": 108.4145},
-    {"name": "Trại Mát",            "lat": 11.9360, "lon": 108.4830},
-    {"name": "Đỉnh Hòn Bồ",        "lat": 11.9600, "lon": 108.4800},
-    {"name": "Đỉnh Pinhatt",        "lat": 11.8900, "lon": 108.4300},
-    {"name": "Đỉnh Langbiang",      "lat": 12.0086, "lon": 108.4190},
-    {"name": "Đồi Robin",           "lat": 11.9280, "lon": 108.4350},
-    {"name": "Đỉnh Rada",           "lat": 12.0500, "lon": 108.4300},
-]
+import json
+import os
+
+# Đường dẫn tới file JSON lưu cấu hình dùng chung
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+HOTSPOTS_JSON_PATH = os.path.join(BASE_DIR, "shared", "hotspots.json")
+
+try:
+    with open(HOTSPOTS_JSON_PATH, "r", encoding="utf-8") as f:
+        HOTSPOTS = json.load(f)
+except Exception as e:
+    print(f"⚠️ [Pipeline] Không thể đọc file hotspots.json: {e}")
+    HOTSPOTS = []
 
 def get_historical_weather(lat, lon, start_date, end_date):
     url = (
