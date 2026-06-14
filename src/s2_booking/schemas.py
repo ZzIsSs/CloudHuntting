@@ -70,3 +70,14 @@ class CloudSpotItem(BaseModel):
  
 class NearbySpotResponse(NearbyResponse):
     spot: CloudSpotItem
+
+
+class NearbyByNameResponse(BaseModel):
+    location_name: str
+    resolved_lat:  float
+    resolved_lon:  float
+    places:        list[PlaceOut]
+    page:          int
+    per_page:      int
+    total:         int
+    has_next:      bool

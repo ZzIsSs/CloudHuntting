@@ -3,9 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from . import services
+from .geocoding import get_coordinates
 from .cloud_spot import get_spot, list_spots
 from .database import get_db
-from .schemas import PlaceOut, NearbyResponse, CategoryItem,CloudSpotItem, NearbySpotResponse
+from .schemas import PlaceOut, NearbyResponse, CategoryItem,CloudSpotItem, NearbySpotResponse, NearbyByNameResponse
 from .dependencies import get_current_user, CurrentUser
 
 
@@ -45,7 +46,7 @@ def get_nearby_places(
 
     result = services.get_nearby_places(
         db, lat, lon, radius_km,
-        category, price_level, amenities,
+        category.lower().strip() if category else None, price_level, amenities,
         sort_by, page, per_page
     )
     return NearbyResponse(
@@ -54,6 +55,49 @@ def get_nearby_places(
         per_page = result["per_page"],
         total    = result["total"],
         has_next = result["has_next"],
+    )
+
+
+@router.get(
+    "/places/nearby-by-name",
+    response_model=NearbyByNameResponse,
+    tags=["Places"],
+    summary="Tìm địa điểm gần điểm săn mây theo tên",
+)
+def get_nearby_by_name(
+    location_name: str            = Query(..., description="Tên điểm săn mây, VD: Đồi Chè Cầu Đất"),
+    radius_km:     float          = Query(5.0, ge=0.1, le=50),
+    category:      str | None     = Query(None),
+    price_level:   int | None     = Query(None, ge=1, le=4),
+    sort_by:       str            = Query("score", description="score | distance | rating"),
+    page:          int            = Query(1, ge=1),
+    per_page:      int            = Query(20, ge=1, le=50),
+    current_user:  CurrentUser    = Depends(get_current_user),
+    db: Session                   = Depends(get_db),
+):
+    """
+    User nhập tên điểm săn mây → S2 tự tìm tọa độ → trả về quán gần đó.
+    Không cần biết lat/lon.
+    """
+    # Geocoding: tên → tọa độ
+    lat, lon = get_coordinates(location_name)
+
+    # Tìm quán gần tọa độ đó
+    result = services.get_nearby_places(
+        db, lat, lon, radius_km,
+        category.lower().strip() if category else None,
+        price_level, None, sort_by, page, per_page
+    )
+
+    return NearbyByNameResponse(
+        location_name = location_name,
+        resolved_lat  = lat,
+        resolved_lon  = lon,
+        places        = [PlaceOut(**p) for p in result["places"]],
+        page          = result["page"],
+        per_page      = result["per_page"],
+        total         = result["total"],
+        has_next      = result["has_next"],
     )
 
 
@@ -85,14 +129,13 @@ def search_places(
     db: Session                  = Depends(get_db),
 ):
     """Tìm địa điểm theo tên. Truyền lat/lon để hiển thị khoảng cách đến địa điểm đó."""
-    results = services.search_places(db, q, lat, lon)
+    results = services.search_places(db, q.strip(), lat, lon)
     return [PlaceOut(**p) for p in results]
 
 
 
 # Tiện ích khi người dùng xem điểm săn mây 
 
- 
 @router.get(
     "/spots",
     response_model=list[CloudSpotItem],
