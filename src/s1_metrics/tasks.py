@@ -13,7 +13,7 @@ def send_forecast_to_service_5(spot: dict, weather_window: list):
     Gửi toàn bộ chuỗi dự báo (batch) về S5.
     Mỗi giờ trong weather_window trở thành 1 bản ghi riêng trong DB.
     """
-    now_vn = datetime.now(VN_TZ)
+    now_vn = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=7)
     payload_list = []
     
     for w in weather_window:

@@ -71,7 +71,7 @@ def predict_cloud_metrics(request: CloudHuntingRequest, background_tasks: Backgr
             warning = "Dự báo tính toán trực tiếp cho địa điểm mới (chưa có trạm quan sát dài hạn)."
 
     s5_url = os.getenv('S5_URL', 'http://127.0.0.1:8005')
-    now_vn = datetime.now(VN_TZ)
+    now_vn = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=7)
     target_time = now_vn + timedelta(hours=request.forecast_hours)
     
     top_spots = []
@@ -180,7 +180,7 @@ def predict_single_point(request: SinglePredictRequest, background_tasks: Backgr
                     if data.get("current"):
                         best_match = data["current"]
                     else:
-                        target_time = datetime.now(VN_TZ)
+                        target_time = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=7)
                         for item in data.get("forecast", []):
                             item_time = datetime.fromisoformat(item["forecast_for"].replace('Z', ''))
                             if abs((item_time - target_time).total_seconds()) <= 3600:
