@@ -1,0 +1,5 @@
+[deploy]
+startCommand = "sh render_start.sh"
+
+[variables]
+RAILPACK_DEPLOY_APT_PACKAGES = "bash"
