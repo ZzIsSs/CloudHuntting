@@ -64,7 +64,7 @@ def predict_cloud_probability(weather_window: List[Dict[str, Any]]) -> Tuple[flo
         try:
             dt = pd.to_datetime(w.get("time", ""))
             times.append(dt.strftime("%H:%M %d/%m"))
-        except:
+        except Exception:
             times.append(w.get("time", "Unknown"))
 
     features = [

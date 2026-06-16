@@ -1,5 +1,6 @@
 import requests
 import math
+import warnings
 from .weather_service import WeatherService
 from .ai_service import predict_cloud_probability
 from .geocoding_service import get_coordinates
@@ -40,15 +41,7 @@ def find_nearest_hotspot(lat: float, lon: float, max_radius_km: float = 10.0) ->
     nearest = None
     
     for spot in HOTSPOTS:
-        # Tạm dùng Haversine để ước lượng nhanh
-        R = 6371.0
-        dlat = math.radians(spot["lat"] - lat)
-        dlon = math.radians(spot["lon"] - lon)
-        a = (math.sin(dlat / 2) ** 2 +
-             math.cos(math.radians(lat)) * math.cos(math.radians(spot["lat"])) *
-             math.sin(dlon / 2) ** 2)
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        dist = round(R * c, 2)
+        dist = get_real_distance(lat, lon, spot["lat"], spot["lon"])
         
         if dist < min_dist and dist <= max_radius_km:
             min_dist = dist
@@ -58,10 +51,14 @@ def find_nearest_hotspot(lat: float, lon: float, max_radius_km: float = 10.0) ->
 
 def scan_nearby_spots(location_name: str, radius_km: float, forecast_hours: int = 0) -> dict:
     """
-    Quét toàn bộ HOTSPOTS nằm trong bán kính từ điểm trung tâm.
-    Với mỗi điểm tìm được, gọi WeatherService + AI để tính xác suất mây.
-    Trả về top 5 địa điểm xếp theo xác suất từ cao xuống thấp.
+    DEPRECATED: Logic đã được chuyển vào routes.py /predict endpoint.
+    Giữ lại để tương thích ngược. Sẽ bị xóa trong phiên bản tương lai.
     """
+    warnings.warn(
+        "scan_nearby_spots() is deprecated. Use /predict endpoint instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     # Bước 1: Dịch tên địa điểm trung tâm thành tọa độ GPS
     center_lat, center_lon = get_coordinates(location_name)
     print(f"\n🔎 [Nearby Scan] Trung tâm: {location_name} ({center_lat}, {center_lon}) | Bán kính: {radius_km}km | Dự báo: +{forecast_hours}h")

@@ -2,7 +2,9 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from typing import Dict, Any
 import requests
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+VN_TZ = timezone(timedelta(hours=7))
 
 from .schemas import CloudHuntingRequest, CloudHuntingResponse, SpotResult, SinglePredictRequest, SinglePredictResponse, ConfidenceInfo
 from .nearby_service import HOTSPOTS, get_real_distance, find_nearest_hotspot
@@ -29,8 +31,6 @@ def get_extended_forecast_confidence(hours_ahead: int) -> ConfidenceInfo:
         return ConfidenceInfo(level="low", percent=45, label="🟠 Tham khảo")
     else:
         return ConfidenceInfo(level="very_low", percent=25, label="🔴 Rất không chắc chắn")
-
-s5_session = requests.Session()
 
 @router.post("/predict", response_model=CloudHuntingResponse)
 def predict_cloud_metrics(request: CloudHuntingRequest, background_tasks: BackgroundTasks):
@@ -71,7 +71,7 @@ def predict_cloud_metrics(request: CloudHuntingRequest, background_tasks: Backgr
             warning = "Dự báo tính toán trực tiếp cho địa điểm mới (chưa có trạm quan sát dài hạn)."
 
     s5_url = os.getenv('S5_URL', 'http://127.0.0.1:8005')
-    now_vn = datetime.utcnow() + timedelta(hours=7)
+    now_vn = datetime.now(VN_TZ)
     target_time = now_vn + timedelta(hours=request.forecast_hours)
     
     top_spots = []
@@ -84,7 +84,7 @@ def predict_cloud_metrics(request: CloudHuntingRequest, background_tasks: Backgr
         # Tầng 1: Thử lấy data từ S5 nếu là trạm xịn và < 4 ngày (96h)
         if spot.get("name") in [h["name"] for h in HOTSPOTS] and request.forecast_hours <= 96:
             try:
-                resp = s5_session.get(f"{s5_url}/api/s5/forecast/{spot['name']}", timeout=1.0)
+                resp = requests.get(f"{s5_url}/api/s5/forecast/{spot['name']}", timeout=1.0)
                 if resp.status_code == 200:
                     data = resp.json()
                     best_match = None
@@ -173,14 +173,14 @@ def predict_single_point(request: SinglePredictRequest, background_tasks: Backgr
         if request.location_name in [h["name"] for h in HOTSPOTS]:
             s5_url = os.getenv('S5_URL', 'http://127.0.0.1:8005')
             try:
-                resp = s5_session.get(f"{s5_url}/api/s5/forecast/{request.location_name}", timeout=1.0)
+                resp = requests.get(f"{s5_url}/api/s5/forecast/{request.location_name}", timeout=1.0)
                 if resp.status_code == 200:
                     data = resp.json()
                     best_match = None
                     if data.get("current"):
                         best_match = data["current"]
                     else:
-                        target_time = datetime.utcnow() + timedelta(hours=7)
+                        target_time = datetime.now(VN_TZ)
                         for item in data.get("forecast", []):
                             item_time = datetime.fromisoformat(item["forecast_for"].replace('Z', ''))
                             if abs((item_time - target_time).total_seconds()) <= 3600:

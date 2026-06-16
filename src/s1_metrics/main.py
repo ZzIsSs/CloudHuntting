@@ -1,16 +1,12 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from .routes import router as s1_router
 from .ai_service import load_model
 
-app = FastAPI(
-    title="Cloud Hunting - Service 1",
-    description="Microservice dự báo tỷ lệ săn mây dựa trên mô hình AI",
-    version="1.0.0"
-)
-
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # === Startup ===
     print("[INFO] Starting Service 1...")
     # Load model vào RAM ngay khi startup (dùng load_model đã import ở đầu file)
     load_model()
@@ -20,6 +16,18 @@ async def startup_event():
     start_bot()
     
     print("[INFO] Service 1 is ready.")
+    yield
+    # === Shutdown ===
+    from .tasks import scheduler
+    scheduler.shutdown(wait=False)
+    print("[INFO] Service 1 shutdown complete.")
+
+app = FastAPI(
+    title="Cloud Hunting - Service 1",
+    description="Microservice dự báo tỷ lệ săn mây dựa trên mô hình AI",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # Đăng ký routes
 app.include_router(s1_router, prefix="/api/s1", tags=["Metrics"])

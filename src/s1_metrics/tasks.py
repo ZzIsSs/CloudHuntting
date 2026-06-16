@@ -2,7 +2,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from .nearby_service import HOTSPOTS
 from .weather_service import WeatherService
 from .ai_service import predict_cloud_probability
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+VN_TZ = timezone(timedelta(hours=7))
 import requests
 import os
 
@@ -11,7 +13,7 @@ def send_forecast_to_service_5(spot: dict, weather_window: list):
     Gửi toàn bộ chuỗi dự báo (batch) về S5.
     Mỗi giờ trong weather_window trở thành 1 bản ghi riêng trong DB.
     """
-    now_vn = datetime.utcnow() + timedelta(hours=7)
+    now_vn = datetime.now(VN_TZ)
     payload_list = []
     
     for w in weather_window:

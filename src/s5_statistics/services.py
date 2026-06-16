@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from .database import CloudMetricsLog
@@ -11,7 +11,7 @@ def save_log(db: Session, request: LogRequest):
     Lưu log từ Service 1 vào DB (giữ nguyên cho tương thích ngược).
     """
     # Nếu forecast_for không có, dùng thời điểm hiện tại
-    forecast_time = datetime.fromisoformat(request.forecast_for) if request.forecast_for else datetime.utcnow()
+    forecast_time = datetime.fromisoformat(request.forecast_for) if request.forecast_for else datetime.now(timezone.utc)
     
     db_log = CloudMetricsLog(
         location_name=request.location_name,
@@ -25,7 +25,7 @@ def save_log(db: Session, request: LogRequest):
         cloud_cover_low=request.weather_data.cloud_cover_low,
         cloud_cover_high=request.weather_data.cloud_cover_high,
         dew_point_2m=request.weather_data.dew_point_2m,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
         forecast_for=forecast_time,
         record_type=request.record_type
     )
@@ -40,7 +40,7 @@ def save_log_batch(db: Session, logs: list[BatchLogItem]):
     Nếu bản ghi (location_name + forecast_for) đã tồn tại thì cập nhật, ngược lại tạo mới.
     Thực hiện trong 1 transaction duy nhất để tối ưu SQLite.
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     for log_data in logs:
         # Xử lý UTC từ ISO string (bỏ timezone Z nếu có)
@@ -93,13 +93,13 @@ def get_statistics(db: Session, location_name: str, days: int) -> list[Statistic
     """
     Lấy dữ liệu thống kê quá khứ.
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
     
     # Chỉ lấy các bản ghi historical hoặc current để thống kê
     records = db.query(CloudMetricsLog).filter(
         CloudMetricsLog.location_name == location_name,
         CloudMetricsLog.forecast_for >= cutoff_date,
-        CloudMetricsLog.forecast_for <= datetime.utcnow(),
+        CloudMetricsLog.forecast_for <= datetime.now(timezone.utc),
         CloudMetricsLog.record_type.in_(["historical", "current"])
     ).all()
     
@@ -152,7 +152,7 @@ def get_location_forecast(db: Session, location_name: str) -> ForecastResponse:
     Lấy dữ liệu dự báo đã tính sẵn (pre-computed) cho một địa điểm.
     """
     # Lấy dự báo tương lai và hiện tại (trong khoảng -1h đến tương lai)
-    cutoff = datetime.utcnow() - timedelta(hours=1)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
     
     records = db.query(CloudMetricsLog).filter(
         CloudMetricsLog.location_name == location_name,
@@ -168,7 +168,7 @@ def get_location_forecast(db: Session, location_name: str) -> ForecastResponse:
     forecast_items = []
     current_item = None
     
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     for r in records:
         item = ForecastItem(
@@ -213,7 +213,7 @@ def cleanup_old_records(db: Session):
     Dọn dẹp dữ liệu cũ.
     """
     # 1. Xóa dữ liệu lịch sử cũ hơn 30 ngày
-    cutoff_history = datetime.utcnow() - timedelta(days=30)
+    cutoff_history = datetime.now(timezone.utc) - timedelta(days=30)
     del_hist = db.query(CloudMetricsLog).filter(
         CloudMetricsLog.record_type == "historical",
         CloudMetricsLog.forecast_for < cutoff_history
@@ -221,7 +221,7 @@ def cleanup_old_records(db: Session):
     
     # 2. Xóa dự báo tương lai đã "trở thành quá khứ" hơn 12 giờ
     # (Tránh trường hợp Bot chết, dự báo cũ vẫn tồn tại và bị nhầm là hiện tại)
-    cutoff_forecast = datetime.utcnow() - timedelta(hours=12)
+    cutoff_forecast = datetime.now(timezone.utc) - timedelta(hours=12)
     del_fc = db.query(CloudMetricsLog).filter(
         CloudMetricsLog.record_type.like("forecast%"),
         CloudMetricsLog.forecast_for < cutoff_forecast
