@@ -65,6 +65,7 @@ class PostOut(PostBase):
 # REVIEWS
 class ReviewBase(BaseModel):
     location_id: int
+    location_name: Optional[str] = None
     rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
     comment: Optional[str] = None
     image_url: Optional[str] = None

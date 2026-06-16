@@ -54,7 +54,7 @@ def predict_cloud_metrics(request: CloudHuntingRequest, background_tasks: Backgr
     is_estimated = False
     estimated_from = None
     estimated_distance_km = None
-    warning = None
+    warning = ""
 
     if not candidates:
         nearest = find_nearest_hotspot(center_lat, center_lon, max_radius_km=15.0)

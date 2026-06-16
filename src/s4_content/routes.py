@@ -163,17 +163,71 @@ def create_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Tự động duyệt nếu là admin hoặc moderator
-    is_approved = current_user.role in [RoleEnum.admin, RoleEnum.moderator]
+    review_data = review_in.dict()
+    location_name = review_data.pop("location_name", None)
+    
+    if location_name:
+        loc = db.query(models.Location).filter(models.Location.id == review_data["location_id"]).first()
+        if not loc:
+            loc = models.Location(id=review_data["location_id"], name=location_name)
+            db.add(loc)
+            db.commit()
+
+    # Luôn tự động duyệt bình luận để hiển thị ngay lập tức trên Frontend
+    is_approved = True
     new_review = models.Review(
         user_id=current_user.id,
         is_approved=is_approved,
-        **review_in.dict()
+        **review_data
     )
     db.add(new_review)
     db.commit()
     db.refresh(new_review)
     return new_review
+
+@router.get("/reviews/user/me", response_model=List[schemas.ReviewDetailOut])
+def get_user_reviews(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Lấy các review của user hiện tại kèm tên địa điểm
+    results = db.query(
+        models.Review.id,
+        models.Review.user_id,
+        User.username,
+        models.Review.location_id,
+        models.Location.name.label("location_name"),
+        models.Review.rating,
+        models.Review.comment,
+        models.Review.image_url,
+        models.Review.is_approved,
+        models.Review.helpful_count,
+        models.Review.created_at,
+        models.Review.updated_at
+    ).join(User, models.Review.user_id == User.id)\
+     .outerjoin(models.Location, models.Review.location_id == models.Location.id)\
+     .filter(models.Review.user_id == current_user.id)\
+     .order_by(models.Review.created_at.desc())\
+     .all()
+
+    reviews_out = []
+    for r in results:
+        reviews_out.append({
+            "id": r.id,
+            "user_id": r.user_id,
+            "username": r.username,
+            "location_id": r.location_id,
+            "location_name": r.location_name,
+            "rating": r.rating,
+            "comment": r.comment,
+            "image_url": r.image_url,
+            "is_approved": r.is_approved,
+            "helpful_count": r.helpful_count,
+            "created_at": r.created_at,
+            "updated_at": r.updated_at,
+            "comments": []
+        })
+    return reviews_out
 
 @router.get("/reviews/location/{location_id}", response_model=List[schemas.ReviewDetailOut])
 def get_location_reviews(location_id: int, skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
@@ -349,6 +403,22 @@ def mark_review_helpful(
         raise HTTPException(status_code=404, detail="Review not found")
         
     review.helpful_count += 1
+    db.commit()
+    db.refresh(review)
+    return review
+
+@router.post("/reviews/{review_id}/unhelpful", response_model=schemas.ReviewOut)
+def unmark_review_helpful(
+    review_id: int,
+    db: Session = Depends(get_db)
+):
+    # Bỏ đánh giá bình luận hữu ích (unlike)
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+        
+    if review.helpful_count > 0:
+        review.helpful_count -= 1
     db.commit()
     db.refresh(review)
     return review
