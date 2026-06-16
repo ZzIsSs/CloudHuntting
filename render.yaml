@@ -6,7 +6,7 @@ services:
     name: cloudhunting
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: bash render_start.sh
+    startCommand: sh render_start.sh
     envVars:
       - key: JWT_SECRET
         generateValue: true
