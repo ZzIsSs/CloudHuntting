@@ -1,0 +1,5 @@
+[phases.setup]
+aptPkgs = ["...", "bash"]
+
+[start]
+cmd = "bash render_start.sh"
