@@ -1,7 +1,8 @@
+[phases.setup]
+nixPkgs = ["python3", "bash"]
+
 [build]
-# Install dependencies
 cmd = "pip install -r requirements.txt"
 
 [start]
-# Use sh instead of bash for better Railway compatibility
 cmd = "sh render_start.sh"
