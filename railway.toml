@@ -1,4 +1,0 @@
-[deploy]
-startCommand = "sh render_start.sh"
-
-
