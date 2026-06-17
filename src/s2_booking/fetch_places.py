@@ -7,7 +7,7 @@ from pathlib import Path
 OUTPUT_FILE = Path(__file__).parent / "data" / "mock_places.json"
 
 # Bounding box Đà Lạt: (lat_min, lon_min, lat_max, lon_max)
-DALAT_BBOX = (11.88, 108.38, 12.02, 108.52)
+DALAT_BBOX = (11.4, 107.8, 12.1, 108.6)
 
 CATEGORY_MAP = {
     "cafe":        "cafe",
@@ -75,7 +75,7 @@ def fetch_from_overpass() -> list[dict]:
     )
     resp.raise_for_status()
     data = resp.json()
-    print(f"✅ Nhận {len(data['elements'])} node từ OSM")
+    print(f" Nhận {len(data['elements'])} node từ OSM")
     return data["elements"]
 
 

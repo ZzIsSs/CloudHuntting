@@ -5,17 +5,17 @@ from jose import jwt, JWTError
 from dataclasses import dataclass
 from . import config
 
-# tokenUrl trỏ về S3 — để Swagger UI biết lấy token ở đâu
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8003/auth/login")
 
 
 @dataclass
 class CurrentUser:
-    id: int    # int(sub) — S3 encode sub=str(user.id)
+    id: int    
     role: str  # "user" | "admin" | "moderator"
 
 
-# Mock tokens dùng khi MOCK_AUTH=true
+# Mock tokens dùng khi MOCK_AUTH = true
 _MOCK_TOKENS: dict[str, CurrentUser] = {
     "dev-token-user":    CurrentUser(id=1,   role="user"),
     "dev-token-moderator": CurrentUser(id=100, role="moderator"),
