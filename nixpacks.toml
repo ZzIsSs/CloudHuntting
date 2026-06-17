@@ -1,5 +1,7 @@
-[phases.setup]
-aptPkgs = ["...", "bash"]
+[build]
+# Install dependencies
+cmd = "pip install -r requirements.txt"
 
 [start]
-cmd = "bash render_start.sh"
+# Use sh instead of bash for better Railway compatibility
+cmd = "sh render_start.sh"
