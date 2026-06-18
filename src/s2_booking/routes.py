@@ -62,10 +62,10 @@ def get_nearby_places(
     "/places/nearby-by-name",
     response_model=NearbyByNameResponse,
     tags=["Places"],
-    summary="Tìm địa điểm gần điểm săn mây theo tên",
+    summary="Gợi ý địa điểm gần (theo tên)",
 )
 def get_nearby_by_name(
-    location_name: str            = Query(..., description="Tên điểm săn mây, VD: Đồi Chè Cầu Đất"),
+    location_name: str            = Query(..., description="Tên địa điểm"),
     radius_km:     float          = Query(5.0, ge=0.1, le=50),
     category:      str | None     = Query(None),
     price_level:   int | None     = Query(None, ge=1, le=4),
@@ -116,16 +116,16 @@ def get_categories(
     "/places/search",
     response_model=list[PlaceOut],
     tags=["Places"],
-    summary="Tìm kiếm địa điểm theo tên",
+    summary="Tìm kiếm địa điểm quán theo tên",
 )
 def search_places(
-    q:            str            = Query(..., min_length=2, description="Tên địa điểm cần tìm kiếm"),
+    q:            str            = Query(..., min_length=2, description="Tên địa điểm quán cần tìm kiếm"),
     lat:          float | None   = Query(None, description="Vĩ độ để tính khoảng cách đến địa điểm"),
     lon:          float | None   = Query(None, description="Kinh độ để tính khoảng cách đến địa điểm"),
     current_user: CurrentUser    = Depends(get_current_user),
     db: Session                  = Depends(get_db),
 ):
-    """Tìm địa điểm theo tên. Truyền lat/lon để hiển thị khoảng cách đến địa điểm đó."""
+    """Truyền lat/lon để hiển thị khoảng cách đến địa điểm đó."""
     results = services.search_places(db, q.strip(), lat, lon)
     return [PlaceOut(**p) for p in results]
 
@@ -153,10 +153,10 @@ def get_cloud_spots(
     "/spots/nearby",
     response_model=NearbySpotResponse,
     tags=["Cloud Spots"],
-    summary="Tiện ích — địa điểm xung quanh điểm săn mây cố định",
+    summary="Gợi ý địa điểm xung quanh điểm săn mây cố định",
 )
 def get_places_near_spot(
-    spot:         str          = Query(..., description="Tên điểm săn mây, VD: Đỉnh Langbiang"),
+    spot:         str          = Query(..., description="Tên địa điểm săn mây, VD: Đỉnh Langbiang"),
     radius_km:    float        = Query(5.0, ge=0.1, le=20, description="Mặc định 5km"),
     category:     str | None   = Query(None, description="Loại quán: cafe | restaurant | homestay | hotel | camping"),
     sort_by:      str          = Query("score", description="Sắp xếp theo: score | distance | rating"),
