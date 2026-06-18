@@ -2,7 +2,7 @@
 # ═══════════════════════════════════════════════════════════
 #  CloudHunting - Render.com Start Script
 #  Khoi dong tat ca 6 microservices trong 1 process group
-# ═══════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════
 
 echo "🚀 Dang khoi dong he thong CloudHunting..."
 
