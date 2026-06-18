@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = ["python3", "bash"]
-
-[build]
-cmd = "pip install -r requirements.txt"
-
-[start]
-cmd = "bash render_start.sh"
