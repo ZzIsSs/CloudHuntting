@@ -4,8 +4,6 @@ Quản lý ảnh mặc định theo category — gán vòng tròn.
 Được dùng bởi fetch_places.py (lúc cào OSM) và services.py (lúc trả response).
 """
 
-# ── Điền URL ảnh của bạn vào đây ─────────────────────────────────────────────
-# Mỗi category nên có 3-5 URL.
 
 CATEGORY_PHOTOS: dict[str, list[str]] = {
     "cafe": [

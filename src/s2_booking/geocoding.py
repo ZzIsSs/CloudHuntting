@@ -8,7 +8,6 @@ DEFAULT_COORDS = (11.940419, 108.458313)  # Chợ Đà Lạt
 def get_coordinates(address: str) -> tuple[float, float]:
     """
     Chuyển tên địa điểm thành tọa độ GPS.
-    Copy từ S1 geocoding_service.py — dùng chung Nominatim API.
     """
     if not address or not address.strip():
         return DEFAULT_COORDS
