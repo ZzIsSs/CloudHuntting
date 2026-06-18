@@ -36,12 +36,19 @@ def main():
     for svc in SERVICES:
         print(f"  Dang khoi dong {svc['name']} (port {svc['port']})...")
         
-        # Chay truc tiep bang subprocess (khong dung cmd /k de tranh loi duong dan)
+        # Cho Gateway: lang nghe tat ca IP va dung cong tu bien moi truong (neu co)
+        host = "0.0.0.0" if svc["name"] == "API Gateway" else "127.0.0.1"
+        port = os.getenv("PORT", svc["port"]) if svc["name"] == "API Gateway" else svc["port"]
+        
+        kwargs = {"cwd": BASE_DIR}
+        if os.name == 'nt':
+            kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
+            
+        # Chay truc tiep bang subprocess
         proc = subprocess.Popen(
             [PYTHON, "-m", "uvicorn", svc["module"],
-             "--host", "127.0.0.1", "--port", str(svc["port"])],
-            cwd=BASE_DIR,
-            creationflags=subprocess.CREATE_NEW_CONSOLE
+             "--host", host, "--port", str(port)],
+            **kwargs
         )
         processes.append(proc)
         
