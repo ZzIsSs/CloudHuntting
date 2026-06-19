@@ -41,11 +41,19 @@ def find_nearest_hotspot(lat: float, lon: float, max_radius_km: float = 10.0) ->
     nearest = None
     
     for spot in HOTSPOTS:
+        if spot.get("active") is False:
+            continue
         dist = get_real_distance(lat, lon, spot["lat"], spot["lon"])
         
         if dist < min_dist and dist <= max_radius_km:
             min_dist = dist
-            nearest = {"name": spot["name"], "lat": spot["lat"], "lon": spot["lon"], "distance_km": dist}
+            nearest = {
+                "name": spot["name"], 
+                "lat": spot["lat"], 
+                "lon": spot["lon"], 
+                "distance_km": dist, 
+                "image_url": spot.get("image_url")
+            }
             
     return nearest
 

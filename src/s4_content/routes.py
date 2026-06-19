@@ -195,6 +195,7 @@ def get_user_reviews(
         models.Review.id,
         models.Review.user_id,
         User.username,
+        User.display_name,
         models.Review.location_id,
         models.Location.name.label("location_name"),
         models.Review.rating,
@@ -216,6 +217,7 @@ def get_user_reviews(
             "id": r.id,
             "user_id": r.user_id,
             "username": r.username,
+            "display_name": r.display_name,
             "location_id": r.location_id,
             "location_name": r.location_name,
             "rating": r.rating,
@@ -236,6 +238,7 @@ def get_location_reviews(location_id: int, skip: int = 0, limit: int = 10, db: S
         models.Review.id,
         models.Review.user_id,
         User.username,
+        User.display_name,
         models.Review.location_id,
         models.Review.rating,
         models.Review.comment,
@@ -256,6 +259,7 @@ def get_location_reviews(location_id: int, skip: int = 0, limit: int = 10, db: S
             models.ReviewComment.review_id,
             models.ReviewComment.user_id,
             User.username,
+        User.display_name,
             models.ReviewComment.comment,
             models.ReviewComment.created_at
         ).join(User, models.ReviewComment.user_id == User.id)\
@@ -269,6 +273,7 @@ def get_location_reviews(location_id: int, skip: int = 0, limit: int = 10, db: S
                 "review_id": c.review_id,
                 "user_id": c.user_id,
                 "username": c.username,
+                "display_name": c.display_name,
                 "comment": c.comment,
                 "created_at": c.created_at
             }
@@ -280,6 +285,7 @@ def get_location_reviews(location_id: int, skip: int = 0, limit: int = 10, db: S
             "id": r.id,
             "user_id": r.user_id,
             "username": r.username,
+            "display_name": r.display_name,
             "location_id": r.location_id,
             "rating": r.rating,
             "comment": r.comment,
@@ -306,6 +312,7 @@ def get_location_reviews_all(
         models.Review.id,
         models.Review.user_id,
         User.username,
+        User.display_name,
         models.Review.location_id,
         models.Review.rating,
         models.Review.comment,
@@ -326,6 +333,7 @@ def get_location_reviews_all(
             models.ReviewComment.review_id,
             models.ReviewComment.user_id,
             User.username,
+        User.display_name,
             models.ReviewComment.comment,
             models.ReviewComment.created_at
         ).join(User, models.ReviewComment.user_id == User.id)\
@@ -339,6 +347,7 @@ def get_location_reviews_all(
                 "review_id": c.review_id,
                 "user_id": c.user_id,
                 "username": c.username,
+                "display_name": c.display_name,
                 "comment": c.comment,
                 "created_at": c.created_at
             }
@@ -350,6 +359,7 @@ def get_location_reviews_all(
             "id": r.id,
             "user_id": r.user_id,
             "username": r.username,
+            "display_name": r.display_name,
             "location_id": r.location_id,
             "rating": r.rating,
             "comment": r.comment,
@@ -488,6 +498,7 @@ def create_review_comment(
         review_id=new_comment.review_id,
         user_id=new_comment.user_id,
         username=current_user.username,
+        display_name=current_user.display_name,
         comment=new_comment.comment,
         created_at=new_comment.created_at
     )

@@ -1,9 +1,11 @@
+from typing import Optional
 from pydantic import BaseModel, EmailStr
 from .models import RoleEnum
 
 
 class UserCreate(BaseModel):
     username: str
+    display_name: Optional[str] = None
     email: EmailStr
     password: str
 
@@ -21,6 +23,7 @@ class Token(BaseModel):
 class UserOut(BaseModel):
     id: int
     username: str
+    display_name: Optional[str] = None
     email: str
     role: RoleEnum
 

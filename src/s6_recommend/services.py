@@ -65,22 +65,9 @@ def geocode_location(address: str) -> tuple[float, float]:
 
 def get_real_route(lat1, lon1, lat2, lon2) -> tuple[float, int]:
     """
-    Sử dụng OSRM API để lấy khoảng cách đường bộ (km) và thời gian dự kiến (phút) giữa 2 tọa độ.
-    Có cơ chế dự phòng (fallback) tính khoảng cách theo đường chim bay nếu gọi API bị lỗi.
+    Tính khoảng cách ước lượng bằng đường chim bay (x 1.5 hệ số đường đèo).
+    Đã tắt gọi OSRM API công cộng vì gọi trong vòng lặp gây nghẽn cổ chai (Chậm & Timeout).
     """
-    try:
-        url = f"http://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("code") == "Ok" and len(data.get("routes", [])) > 0:
-                distance_km = data["routes"][0]["distance"] / 1000.0
-                # OSRM duration is unrealistic for Dalat roads, calculate time based on 30km/h (2 mins per km)
-                return distance_km, int(distance_km * 2)
-    except Exception as e:
-        print(f"⚠️ [OSRM] Lỗi gọi API Routing: {e}. Dùng Fallback.")
-    
-    # Fallback (Đường chim bay * 1.5 hệ số đường đèo)
     R = 6371.0
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -148,6 +135,10 @@ def score_locations(req: UserPreferenceRequest) -> list[LocationData]:
         prob = fetch_s1_prediction(loc["name"], loc["lat"], loc["lon"])
         trend = fetch_s5_trend(loc["name"])
         
+        # Hard Filter 4: Tỷ lệ mây quá thấp hoặc thời tiết xấu (< 30%) -> Loại
+        if prob < 30.0:
+            continue
+            
         # 1. Điểm mây: (từ 0-100)
         score = prob
         
@@ -182,21 +173,96 @@ def score_locations(req: UserPreferenceRequest) -> list[LocationData]:
     scored_list.sort(key=lambda x: x.score, reverse=True)
     return scored_list
 
-def generate_itinerary(req: UserPreferenceRequest, best_locations: list[LocationData], is_stop_scenario: bool = False) -> ItineraryResponse:
+def generate_itinerary(req: UserPreferenceRequest, best_locations: list[LocationData], is_stop_scenario: bool = False, is_safe_fallback: bool = False) -> ItineraryResponse:
     """
     Module 3 & 4: Sắp xếp phân chia và đóng gói lịch trình (Timeline).
     Cung cấp các mốc thời gian xuất phát, ghé quán cafe, giờ bình minh, giờ chụp ảnh đẹp nhất.
     Hỗ trợ sinh lộ trình dừng chân khẩn cấp nếu thời tiết xấu (is_stop_scenario).
     """
+    if is_safe_fallback:
+        message = f"🚨 Cảnh báo: Không có địa điểm săn mây nào phù hợp. S6 đề xuất bạn khám phá các tiện ích gần khu vực {req.start_location} thay vì leo đèo."
+        try:
+            start_dt = datetime.strptime(req.start_time, "%H:%M")
+        except:
+            start_dt = datetime.strptime("04:00", "%H:%M")
+        
+        coffee_dt = start_dt + timedelta(hours=3)
+        
+        # Tạo danh sách tiện ích ảo gần nơi nhập
+        nearby_amenities = [
+            LocationData(
+                location_name=f"Quán Cafe view đẹp quanh {req.start_location}",
+                lat=0.0, lon=0.0, probability=0.0, trend="Đi ngang", score=0.0
+            ),
+            LocationData(
+                location_name=f"Quán ăn sáng đặc sản quanh {req.start_location}",
+                lat=0.0, lon=0.0, probability=0.0, trend="Đi ngang", score=0.0
+            ),
+            LocationData(
+                location_name=f"Khu vui chơi / Check-in an toàn quanh {req.start_location}",
+                lat=0.0, lon=0.0, probability=0.0, trend="Đi ngang", score=0.0
+            )
+        ]
+        
+        timeline = [
+            ItineraryStep(
+                time=start_dt.strftime("%H:%M"),
+                action="Nghỉ ngơi tại chỗ",
+                location=req.start_location,
+                note="Thời tiết đi đường đèo quá nguy hiểm. Hãy nghỉ ngơi thêm một chút để đảm bảo sức khỏe."
+            ),
+            ItineraryStep(
+                time=coffee_dt.strftime("%H:%M"),
+                action="Khám phá tiện ích gần bạn",
+                location=f"Khu vực {req.start_location}",
+                note="Dạo quanh khu vực bạn đang ở để thưởng thức bữa sáng nóng hổi, nhâm nhi ly cafe và tận hưởng không khí lạnh an toàn."
+            )
+        ]
+        return ItineraryResponse(
+            user_id=req.user_id,
+            recommended_locations=nearby_amenities,
+            timeline=timeline,
+            message=message
+        )
+
     # Mặc định lấy top 1 điểm săn mây tốt nhất làm đích đến chính
-    primary_dest = best_locations[0]
+    primary_dest = best_locations[0] if best_locations else None
     
-    # Nếu người dùng có chỉ định rõ muốn xem lịch trình của 1 điểm cụ thể (trong top 3)
+    # Nếu người dùng có chỉ định rõ muốn xem lịch trình của 1 điểm cụ thể
     if getattr(req, "selected_location", None):
+        found = False
+        # Tìm trong danh sách best_locations trước
         for loc in best_locations:
-            if loc.location_name == req.selected_location:
+            if loc.location_name.lower() == req.selected_location.lower():
                 primary_dest = loc
+                found = True
                 break
+        
+        # Nếu điểm bị loại khỏi best_locations (do thời tiết xấu, ở xa...), vẫn cho phép lên lịch trình cho điểm đó
+        if not found:
+            for loc in LOCATIONS:
+                if loc["name"].lower() == req.selected_location.lower():
+                    # Gọi lại API lấy tỉ lệ mây mới nhất
+                    prob = fetch_s1_prediction(loc["name"], loc["lat"], loc["lon"])
+                    trend = fetch_s5_trend(loc["name"])
+                    primary_dest = LocationData(
+                        location_name=loc["name"],
+                        lat=loc["lat"],
+                        lon=loc["lon"],
+                        probability=prob,
+                        trend=trend,
+                        score=0.0 # Score thấp do bị loại
+                    )
+                    break
+    
+    # Nếu vẫn không có primary_dest (VD: best_locations rỗng và không tìm thấy location), trả về mảng rỗng
+    if not primary_dest:
+        return ItineraryResponse(
+            user_id=req.user_id,
+            recommended_locations=[],
+            timeline=[],
+            message="Không tìm thấy điểm đến nào phù hợp."
+        )
     
     # Tính toán thời gian di chuyển thực tế (Module 3) bằng OSRM
     start_lat, start_lon = geocode_location(req.start_location)

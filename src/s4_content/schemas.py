@@ -94,6 +94,7 @@ class ReviewCommentOut(BaseModel):
 
 class ReviewCommentDetailOut(ReviewCommentOut):
     username: str
+    display_name: Optional[str] = None
 
 class ReviewOut(ReviewBase):
     id: int
@@ -108,6 +109,7 @@ class ReviewOut(ReviewBase):
 
 class ReviewDetailOut(ReviewOut):
     username: str
+    display_name: Optional[str] = None
     comments: List[ReviewCommentDetailOut] = []
 
 

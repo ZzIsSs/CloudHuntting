@@ -229,6 +229,7 @@ function renderResults(data, forecastHours = 0) {
             <div class="progress-bar">
                 <div class="progress-fill" style="width: ${spot.probability}%"></div>
             </div>
+            ${spot.image_url ? `<div style="margin-top: 12px; margin-bottom: 12px; border-radius: 8px; overflow: hidden;"><img src="${spot.image_url}" alt="${spot.location_name}" style="width: 100%; height: 160px; object-fit: cover; display: block;"></div>` : ''}
             <div class="spot-suggestion">${spot.suggestion}</div>
             <div class="spot-actions">
                 <a href="/app/stats.html?name=${encodeURIComponent(spot.location_name)}" 
@@ -963,36 +964,47 @@ async function loadStatistics(locationName) {
 }
 
 function renderStatistics(data, locationName) {
-    // Hien thi cac chi so
-    const stats = data.statistics || data;
+    // Doc dung mang data.data[] tu StatisticsResponse cua backend
+    const dailyData = data.data || [];
 
-    const avgEl = document.getElementById('stat-avg');
-    const maxEl = document.getElementById('stat-max');
-    const minEl = document.getElementById('stat-min');
-    const trendEl = document.getElementById('stat-trend');
-    const currentEl = document.getElementById('stats-current-value');
-    const trendBadge = document.getElementById('stats-trend-badge');
-
-    if (avgEl) avgEl.textContent = `${(stats.avg_probability || 0).toFixed(1)}%`;
-    if (maxEl) maxEl.textContent = `${(stats.max_probability || 0).toFixed(1)}%`;
-    if (minEl) minEl.textContent = `${(stats.min_probability || 0).toFixed(1)}%`;
-
-    const trend = stats.trend || 'Di ngang';
-    if (trendEl) trendEl.textContent = trend;
-    if (currentEl) currentEl.textContent = `${(stats.avg_probability || 0).toFixed(0)}%`;
-
-    if (trendBadge) {
-        const trendClass = trend === 'Tang' ? 'trend-up' :
-                           trend === 'Giam' ? 'trend-down' : 'trend-stable';
-        const trendIcon = trend === 'Tang' ? '&#9650;' :
-                          trend === 'Giam' ? '&#9660;' : '&#9654;';
-        trendBadge.className = `stats-trend ${trendClass}`;
-        trendBadge.innerHTML = `${trendIcon} ${trend}`;
+    if (dailyData.length === 0) {
+        renderFallbackStats(locationName);
+        return;
     }
 
-    // Ve bieu do
-    if (stats.daily_data && stats.daily_data.length > 0) {
-        drawChart(stats.daily_data);
+    // Tinh toan avg / max / min tu mang (backend khong tinh san)
+    const probs = dailyData.map(d => d.avg_probability);
+    const avg   = probs.reduce((a, b) => a + b, 0) / probs.length;
+    const max   = Math.max(...probs);
+    const min   = Math.min(...probs);
+    // Lay trend cua ngay gan nhat (phan tu cuoi mang)
+    const latestTrend = dailyData[dailyData.length - 1]?.trend || 'Di ngang';
+
+    const avgEl      = document.getElementById('stat-avg');
+    const maxEl      = document.getElementById('stat-max');
+    const minEl      = document.getElementById('stat-min');
+    const trendEl    = document.getElementById('stat-trend');
+    const currentEl  = document.getElementById('stats-current-value');
+    const trendBadge = document.getElementById('stats-trend-badge');
+
+    if (avgEl)     avgEl.textContent     = `${avg.toFixed(1)}%`;
+    if (maxEl)     maxEl.textContent     = `${max.toFixed(1)}%`;
+    if (minEl)     minEl.textContent     = `${min.toFixed(1)}%`;
+    if (trendEl)   trendEl.textContent   = latestTrend;
+    if (currentEl) currentEl.textContent = `${avg.toFixed(0)}%`;
+
+    if (trendBadge) {
+        const trendClass = latestTrend === 'Tăng' ? 'trend-up' :
+                           latestTrend === 'Giảm' ? 'trend-down' : 'trend-stable';
+        const trendIcon  = latestTrend === 'Tăng' ? '&#9650;' :
+                           latestTrend === 'Giảm' ? '&#9660;' : '&#9654;';
+        trendBadge.className = `stats-trend ${trendClass}`;
+        trendBadge.innerHTML = `${trendIcon} ${latestTrend}`;
+    }
+
+    // Truyen dung mang dailyData vao ham ve bieu do
+    if (dailyData.length > 0) {
+        drawChart(dailyData);
     }
 }
 

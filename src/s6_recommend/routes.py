@@ -22,7 +22,9 @@ def recommend_itinerary(request: UserPreferenceRequest, db: Session = Depends(ge
         best_locations = score_locations(request)
         
         if not best_locations:
-            raise HTTPException(status_code=404, detail="Không tìm thấy địa điểm phù hợp.")
+            # 3. Kịch bản an toàn (Fallback) thay vì quăng lỗi 404
+            itinerary = generate_itinerary(request, [], is_safe_fallback=True)
+            return itinerary
             
         # 3. Lên lịch trình (M3, M4)
         itinerary = generate_itinerary(request, best_locations)

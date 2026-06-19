@@ -42,6 +42,7 @@ class SpotResult(BaseModel):
     suggestion: str = Field(..., description="Lời khuyên cho địa điểm này")
     timeline: Optional[List[dict]] = Field(default=[], description="Chỉ số săn mây theo từng giờ [{time, probability}]")
     confidence: Optional[ConfidenceInfo] = Field(default=None, description="Độ tin cậy của dự báo")
+    image_url: Optional[str] = Field(default=None, description="Đường dẫn ảnh địa điểm")
 
 # ─── OUTPUT: Kết quả tổng hợp ────────────────────────────────────────────────
 

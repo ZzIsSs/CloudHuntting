@@ -25,6 +25,7 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     hashed = auth.hash_password(user_in.password)
     user = models.User(
         username=user_in.username,
+        display_name=user_in.display_name,
         email=user_in.email,
         hashed_password=hashed,
     )
@@ -49,6 +50,12 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = auth.create_access_token(
-        data={"sub": str(user.id), "role": user.role.value}
+        data={
+            "sub": str(user.id),
+            "role": user.role.value,
+            "username": user.username,
+            "display_name": user.display_name,
+            "email": user.email
+        }
     )
     return {"access_token": access_token, "token_type": "bearer"}

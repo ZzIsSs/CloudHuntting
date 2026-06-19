@@ -47,6 +47,8 @@ def predict_cloud_metrics(request: CloudHuntingRequest, background_tasks: Backgr
 
     candidates = []
     for spot in HOTSPOTS:
+        if spot.get("active") is False:
+            continue
         dist = get_real_distance(center_lat, center_lon, spot["lat"], spot["lon"])
         if dist <= request.radius_km:
             candidates.append({"spot": spot, "dist": dist})
@@ -91,11 +93,14 @@ def predict_cloud_metrics(request: CloudHuntingRequest, background_tasks: Backgr
                     if request.forecast_hours == 0 and data.get("current"):
                         best_match = data["current"]
                     else:
+                        max_prob = -1
                         for item in data.get("forecast", []):
                             item_time = datetime.fromisoformat(item["forecast_for"].replace('Z', ''))
-                            if abs((item_time - target_time).total_seconds()) <= 3600:
-                                best_match = item
-                                break
+                            # Tìm đỉnh mây CAO NHẤT trong khoảng thời gian dò
+                            if item_time <= target_time + timedelta(minutes=30):
+                                if item["probability"] > max_prob:
+                                    max_prob = item["probability"]
+                                    best_match = item
                     if best_match:
                         s5_data = best_match
             except Exception as e:
@@ -112,6 +117,21 @@ def predict_cloud_metrics(request: CloudHuntingRequest, background_tasks: Backgr
                 percent=s5_data["confidence"]["percent"],
                 label=s5_data["confidence"]["label"]
             )
+            
+            # Build timeline từ S5 forecast
+            s5_timeline = []
+            for item in data.get("forecast", []):
+                try:
+                    item_time = datetime.fromisoformat(item["forecast_for"].replace('Z', ''))
+                    time_str = item_time.strftime("%H:%M %d/%m")
+                except Exception:
+                    time_str = item["forecast_for"]
+                
+                s5_timeline.append({
+                    "time": time_str,
+                    "probability": round(item["probability"], 2)
+                })
+
             top_spots.append(SpotResult(
                 rank=0,
                 location_name=spot["name"],
@@ -121,8 +141,9 @@ def predict_cloud_metrics(request: CloudHuntingRequest, background_tasks: Backgr
                 probability=s5_data["probability"],
                 best_time=s5_data["forecast_for"],
                 suggestion="Dữ liệu siêu tốc từ hệ thống CloudHunting.",
-                timeline=[], # Có thể fetch timeline nếu cần
-                confidence=conf
+                timeline=s5_timeline, # Đã fix: Trả về timeline từ S5
+                confidence=conf,
+                image_url=spot.get("image_url")
             ))
         else:
             # Tầng 2B/3: Real-time API
@@ -141,7 +162,8 @@ def predict_cloud_metrics(request: CloudHuntingRequest, background_tasks: Backgr
                     best_time=best_time,
                     suggestion=suggestion,
                     timeline=timeline,
-                    confidence=conf
+                    confidence=conf,
+                    image_url=spot.get("image_url")
                 ))
             except Exception as e:
                 print(f"Lỗi Real-time với {spot['name']}: {e}")
