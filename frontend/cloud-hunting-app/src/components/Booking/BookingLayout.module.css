@@ -1,0 +1,75 @@
+.bookingLayout {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 24px;
+    width: 100%;
+    max-width: 1200px;
+    height: 100%;
+    max-height: 750px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.header {
+    padding: 25px 40px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.headerTitle {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.backBtn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #0ea5e9;
+}
+
+.headerActions {
+    display: flex;
+    gap: 15px;
+}
+
+.filterBtn {
+    background: #ffffff;
+    border: 1px solid #bae6fd;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    color: #0284c7;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.filterBtn:hover {
+    background: #e0f2fe;
+    transform: translateY(-2px);
+}
+
+.filterBtn.active {
+    background: #0284c7;
+    color: white;
+    border-color: #0284c7;
+}
+
+.bodyContent {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
