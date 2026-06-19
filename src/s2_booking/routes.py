@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 
-# Tiện ích khi người dùng dùng GPS tìm quán gần đó
+# Dùng GPS tìm quán gần đó
 
 @router.get(
     "/places/nearby",
@@ -75,10 +75,7 @@ def get_nearby_by_name(
     current_user:  CurrentUser    = Depends(get_current_user),
     db: Session                   = Depends(get_db),
 ):
-    """
-    User nhập tên điểm săn mây → S2 tự tìm tọa độ → trả về quán gần đó.
-    Không cần biết lat/lon.
-    """
+    
     # Geocoding: tên → tọa độ
     lat, lon = get_coordinates(location_name)
 
@@ -147,8 +144,7 @@ def get_cloud_spots(
     current_user: CurrentUser = Depends(get_current_user),
 ):
     """
-    Trả về 10 điểm săn mây cố định tại Đà Lạt, kèm tọa độ và mô tả ngắn gọn.
-    Danh sách này được sử dụng để hiển thị trên S1, giúp người dùng dễ dàng chọn điểm săn mây và xem tiện ích xung quanh.
+    Trả về các điểm săn mây cố định tại Đà Lạt, kèm tọa độ.
     """
     return list_spots()
  
