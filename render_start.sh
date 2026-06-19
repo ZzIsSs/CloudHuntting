@@ -2,9 +2,16 @@
 # ═══════════════════════════════════════════════════════════
 #  CloudHunting - Render.com Start Script
 #  Khoi dong tat ca 6 microservices trong 1 process group
-# ═══════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════
 
 echo "🚀 Dang khoi dong he thong CloudHunting..."
+
+# [Railway Persistent Volume] Tạo symbolic links để lưu trữ các file SQLite vào ổ đĩa /data
+# Việc này giúp dữ liệu không bị mất khi container khởi động lại trên Railway
+echo "  🔄 Setting up database volumes..."
+ln -sf /data/app.db app.db
+ln -sf /data/cloud_hunting.db cloud_hunting.db
+ln -sf /data/s6_preferences.db s6_preferences.db
 
 # Khoi dong cac service noi bo (chay ngam)
 uvicorn src.s3_auth.main:app --host 0.0.0.0 --port 8003 &
