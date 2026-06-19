@@ -48,7 +48,7 @@ app.add_middleware(
 app.include_router(router)
 
 # --- Static Files: Serve frontend ---
-frontend_dir = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
+frontend_dir = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "cloud-hunting-app", "dist")
 frontend_dir = os.path.abspath(frontend_dir)
 if os.path.isdir(frontend_dir):
     app.mount("/app", StaticFiles(directory=frontend_dir, html=True), name="frontend")
@@ -62,7 +62,7 @@ if os.path.isdir(pic_dir):
 # --- Root redirect ---
 @app.get("/", include_in_schema=False)
 def root():
-    return RedirectResponse(url="/app/login.html")
+    return RedirectResponse(url="/app/")
 
 # --- Startup event ---
 @app.on_event("startup")
