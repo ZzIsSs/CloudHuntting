@@ -13,17 +13,16 @@ class PlaceCategoryEnum(str, enum.Enum):
 
 
 class PlaceOut(BaseModel):
-    id:           str
-    name:         str
-    category:     str
-    address:      str
-    province:     str
-    avg_rating:   float
-    review_count: int
-    price_level:  int
-    amenities:    list[str]
-    photos:       list[dict]
-    distance_km:  float
+    id:          str
+    name:        str
+    category:    str
+    lat:         float
+    lon:         float
+    address:     str
+    province:    str
+    amenities:   list[str]
+    photos:      list[dict]
+    distance_km: float
 
     @computed_field
     @property
@@ -34,16 +33,19 @@ class PlaceOut(BaseModel):
 
     @computed_field
     @property
-    def price_label(self) -> str:
-        return {1: "Rẻ", 2: "Trung bình", 3: "Khá đắt", 4: "Đắt"}.get(self.price_level, "")
-
-    @computed_field
-    @property
     def primary_photo_url(self) -> Optional[str]:
         if not self.photos:
             return None
         primary = next((p for p in self.photos if p.get("is_primary")), self.photos[0])
         return primary.get("url")
+
+    @computed_field
+    @property
+    def map_url(self) -> str:
+        """
+        Link mở Google Maps chỉ đường từ vị trí hiện tại của người dùng tới quán.
+        """
+        return f"https://www.google.com/maps/dir/?api=1&destination={self.lat},{self.lon}"
 
     model_config = {"from_attributes": True}
 
@@ -61,13 +63,13 @@ class CategoryItem(BaseModel):
     label:    str
     count:    int
 
+
 class CloudSpotItem(BaseModel):
-    name:        str
-    lat:         float
-    lon:         float
-    
- 
- 
+    name: str
+    lat:  float
+    lon:  float
+
+
 class NearbySpotResponse(NearbyResponse):
     spot: CloudSpotItem
 

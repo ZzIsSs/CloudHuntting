@@ -22,7 +22,7 @@ class PlaceCategory(str, enum.Enum):
 class Place(Base):
     """
     Địa điểm gần điểm săn mây: quán cà phê, homestay, nhà hàng...
-    Dữ liệu lấy từ OpenStreetMap qua fetch_places.py.
+    Dữ liệu lấy từ OpenStreetMap.
     """
     __tablename__ = "places"
 
@@ -33,12 +33,8 @@ class Place(Base):
     lon          = Column(Float,   nullable=False)
     address      = Column(Text,    default="")
     province     = Column(String(100), default="Lâm Đồng")
-    avg_rating   = Column(Float,   default=4.0)
-    review_count = Column(Integer, default=0)
-    price_level  = Column(Integer, default=2)   # 1=rẻ → 4=đắt
     is_active    = Column(Boolean, default=True)
 
-    # SQLite không có JSON column → lưu dạng Text (JSON string)
     amenities_json     = Column(Text, default="[]")
     opening_hours_json = Column(Text, default="{}")
     photos_json        = Column(Text, default="[]")

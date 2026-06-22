@@ -79,19 +79,6 @@ def fetch_from_overpass() -> list[dict]:
     return data["elements"]
 
 
-def _extract_osm_image(tags: dict) -> str | None:
-    """Ưu tiên 1: lấy ảnh thật từ OSM tags nếu có."""
-    raw = tags.get("image") or tags.get("wikimedia_commons") or tags.get("mapillary")
-    if not raw:
-        return None
-    if raw.startswith("File:"):
-        filename = raw.replace("File:", "").replace(" ", "_")
-        return f"https://commons.wikimedia.org/wiki/Special:FilePath/{filename}?width=800"
-    if raw.startswith("http"):
-        return raw
-    return None
-
-
 def parse_element(el: dict, index: int) -> dict | None:
     tags = el.get("tags", {})
     name = tags.get("name") or tags.get("name:vi") or tags.get("name:en")
@@ -112,16 +99,6 @@ def parse_element(el: dict, index: int) -> dict | None:
         amenities.append("takeaway")
     if category in ("hotel", "homestay") and tags.get("breakfast") == "yes":
         amenities.append("breakfast")
-
-    # Price level
-    price_level = 2
-    stars = tags.get("stars", "")
-    if stars in ("4", "5"):
-        price_level = 4
-    elif stars == "3":
-        price_level = 3
-    elif category == "camping":
-        price_level = 1
 
     # Địa chỉ
     parts = [
@@ -149,9 +126,6 @@ def parse_element(el: dict, index: int) -> dict | None:
         "lon":          round(el["lon"], 6),
         "address":      address,
         "province":     "Lâm Đồng",
-        "avg_rating":   4.0,
-        "review_count": 0,
-        "price_level":  price_level,
         "is_active":    True,
         "amenities":    list(set(amenities)),
         "opening_hours": {
@@ -208,9 +182,9 @@ def main():
     for cat, count in sorted(cats.items(), key=lambda x: order.get(x[0], 99)):
         print(f"   {cat:12s}: {count}")
     print(f"   {'TỔNG':12s}: {len(places)}")
-    print(f"\n🖼️  Ảnh OSM thật  : {osm_count}/{len(places)}")
-    print(f"   Ảnh vòng tròn : {len(places) - osm_count}/{len(places)}")
-    print(f"\n✅ Ghi xong → {OUTPUT_FILE}")
+    print(f"Ảnh OSM thật  : {osm_count}/{len(places)}")
+    print(f"Ảnh vòng tròn : {len(places) - osm_count}/{len(places)}")
+    print(f"\n Ghi xong → {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":

@@ -50,7 +50,6 @@ def _resolve_photos(photos_json: str, category: str, place_id: str) -> list[dict
     return fixed
 
 
-
 def _place_to_dict(place: Place, distance_km: float) -> dict:
     photos = _resolve_photos(
         place.photos_json or "[]",
@@ -61,11 +60,10 @@ def _place_to_dict(place: Place, distance_km: float) -> dict:
         "id":            place.id,
         "name":          place.name,
         "category":      place.category,
+        "lat":           place.lat,
+        "lon":           place.lon,
         "address":       place.address or "",
         "province":      place.province or "Lâm Đồng",
-        "avg_rating":    place.avg_rating,
-        "review_count":  place.review_count,
-        "price_level":   place.price_level,
         "amenities":     json.loads(place.amenities_json     or "[]"),
         "opening_hours": json.loads(place.opening_hours_json or "{}"),
         "photos":        photos,
@@ -83,17 +81,14 @@ def get_nearby_places(
     lon:         float,
     radius_km:   float            = 5.0,
     category:    str | None       = None,
-    price_level: int | None       = None,
     amenities:   list[str] | None = None,
-    sort_by:     str              = "score",
     page:        int              = 1,
     per_page:    int              = 20,
 ) -> dict:
+
     query = db.query(Place).filter(Place.is_active == True)
     if category:
         query = query.filter(Place.category == category.lower().strip())
-    if price_level:
-        query = query.filter(Place.price_level == price_level)
 
     results = []
     for p in query.all():
@@ -106,19 +101,7 @@ def get_nearby_places(
                 continue
         results.append((p, round(dist, 3)))
 
-    if sort_by == "distance":
-        results.sort(key=lambda x: x[1])
-    elif sort_by == "rating":
-        results.sort(key=lambda x: x[0].avg_rating, reverse=True)
-    else:
-        # score mặc định: 60% gần + 40% rating
-        results.sort(
-            key=lambda x: (
-                (1.0 - min(x[1] / radius_km, 1.0)) * 0.6
-                + (x[0].avg_rating / 5.0) * 0.4
-            ),
-            reverse=True,
-        )
+    results.sort(key=lambda x: x[1])
 
     total = len(results)
     start = (page - 1) * per_page
