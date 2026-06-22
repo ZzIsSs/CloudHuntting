@@ -3,7 +3,7 @@
 import requests
 import json
 from pathlib import Path
-
+import time
 OUTPUT_FILE = Path(__file__).parent / "data" / "mock_places.json"
 
 # Bounding box Đà Lạt: (lat_min, lon_min, lat_max, lon_max)
@@ -50,6 +50,59 @@ def _extract_osm_image(tags: dict) -> str | None:
         return raw
     return None
 
+
+def _reverse_geocode(lat: float, lon: float) -> str | None:
+    """Dùng Nominatim để suy ra địa chỉ ngắn gọn (Số nhà, đường, phường/xã)."""
+    time.sleep(1.1)
+    
+    url = "https://nominatim.openstreetmap.org/reverse"
+    params = {
+        "lat": lat,
+        "lon": lon,
+        "format": "json",
+        "addressdetails": 1,
+        "accept-language": "vi"
+    }
+    headers = {
+        "User-Agent": "CloudHuntingApp/1.0 (educational project; student-crawler)"
+    }
+    try:
+        resp = requests.get(url, params=params, headers=headers, timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        # LẤY DICT CHỨA CHI TIẾT ĐỊA CHỈ
+        addr_details = data.get("address", {})
+        
+        # Bóc tách từng thành phần bạn cần
+        house_number = addr_details.get("house_number")
+        road         = addr_details.get("road")
+        # Phường/Xã trong OSM có thể nằm ở một trong các tag này tùy khu vực
+        suburb       = addr_details.get("suburb") or addr_details.get("ward") or addr_details.get("quarter")
+        
+        # Tạo mảng để lọc và gom các giá trị tồn tại
+        address_parts = []
+        
+        # 1. Nếu có số nhà và tên đường thì ghép lại (VD: "12 Nhà Chung")
+        if road:
+            if house_number:
+                address_parts.append(f"{house_number} {road}")
+            else:
+                address_parts.append(road)
+                
+        # 2. Thêm thông tin Phường/Xã nếu có (VD: "Phường 3")
+        if suburb:
+            address_parts.append(suburb)
+            
+        # 3. Chốt đuôi luôn là Đà Lạt
+        address_parts.append("Đà Lạt")
+        
+        # Ghép lại bằng dấu phẩy
+        short_address = ", ".join(address_parts)
+        return short_address
+        
+    except Exception:
+        return None
 
 def fetch_from_overpass() -> list[dict]:
     lat_min, lon_min, lat_max, lon_max = DALAT_BBOX
@@ -101,16 +154,26 @@ def parse_element(el: dict, index: int) -> dict | None:
         amenities.append("breakfast")
 
     # Địa chỉ
+    lat_val = el["lat"]
+    lon_val = el["lon"]
+    
     parts = [
         tags.get("addr:housenumber", ""),
         tags.get("addr:street", ""),
         tags.get("addr:suburb") or tags.get("addr:ward", ""),
     ]
-    address = ", ".join(p for p in parts if p)
-    if not address:
-        address = "Đà Lạt, Lâm Đồng"
-    elif "Đà Lạt" not in address:
-        address += ", Đà Lạt"
+    parts_str = ", ".join(p for p in parts if p)
+    
+    if not parts_str:
+        # Nếu OSM rỗng địa chỉ -> Gọi Nominatim vá lỗi dữ liệu bằng tọa độ
+        
+        resolved_address = _reverse_geocode(lat_val, lon_val)
+        address = resolved_address if resolved_address else "Khu vực ngoại ô, Thành phố Đà Lạt, Lâm Đồng"
+    else:
+        # Nếu có địa chỉ thô từ OSM thì chuẩn hóa đuôi địa danh
+        address = parts_str
+        if "Đà Lạt" not in address:
+            address += ", Đà Lạt"
 
     # Ưu tiên 1: ảnh thật từ OSM tags (image / wikimedia_commons / mapillary)
     # Ưu tiên 2: ảnh vòng tròn theo category từ image_urls.py
