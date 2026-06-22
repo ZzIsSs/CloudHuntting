@@ -51,7 +51,7 @@ app.include_router(router)
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "cloud-hunting-app", "dist")
 frontend_dir = os.path.abspath(frontend_dir)
 if os.path.isdir(frontend_dir):
-    app.mount("/app", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 # --- Static Files: Serve pic ---
 pic_dir = os.path.join(os.path.dirname(__file__), "..", "..", "pic")
@@ -59,11 +59,7 @@ pic_dir = os.path.abspath(pic_dir)
 if os.path.isdir(pic_dir):
     app.mount("/pic", StaticFiles(directory=pic_dir), name="pic")
 
-# --- Root redirect ---
-@app.get("/", include_in_schema=False)
-def root():
-    return RedirectResponse(url="/app/")
-
+# (Removed root redirect to /app/ because frontend is now on /)
 # --- Startup event ---
 @app.on_event("startup")
 async def startup_event():
@@ -73,7 +69,7 @@ async def startup_event():
     for key, svc in SERVICES.items():
         print(f"  {svc['prefix']:<14} -> {svc['url']}")
     print("-" * 58)
-    print(f"  Frontend: http://{GATEWAY_HOST}:{GATEWAY_PORT}/app/")
+    print(f"  Frontend: http://{GATEWAY_HOST}:{GATEWAY_PORT}/")
     print(f"  Gateway:  http://{GATEWAY_HOST}:{GATEWAY_PORT}")
     print(f"  Swagger:  http://{GATEWAY_HOST}:{GATEWAY_PORT}/docs")
     print("=" * 58)
