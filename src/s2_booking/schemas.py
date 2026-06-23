@@ -1,5 +1,5 @@
 # src/s2_booking/schemas.py
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel
 from typing import Optional
 import enum
 
@@ -13,39 +13,19 @@ class PlaceCategoryEnum(str, enum.Enum):
 
 
 class PlaceOut(BaseModel):
-    id:          str
-    name:        str
-    category:    str
-    lat:         float
-    lon:         float
-    address:     str
-    province:    str
-    amenities:   list[str]
-    photos:      list[dict]
-    distance_km: float
-
-    @computed_field
-    @property
-    def distance_label(self) -> str:
-        if self.distance_km < 1:
-            return f"{int(self.distance_km * 1000)}m"
-        return f"{self.distance_km:.1f}km"
-
-    @computed_field
-    @property
-    def primary_photo_url(self) -> Optional[str]:
-        if not self.photos:
-            return None
-        primary = next((p for p in self.photos if p.get("is_primary")), self.photos[0])
-        return primary.get("url")
-
-    @computed_field
-    @property
-    def map_url(self) -> str:
-        """
-        Link mở Google Maps chỉ đường từ vị trí hiện tại của người dùng tới quán.
-        """
-        return f"https://www.google.com/maps/dir/?api=1&destination={self.lat},{self.lon}"
+    id:                str
+    name:              str
+    category:          str
+    lat:               float
+    lon:               float
+    address:           str
+    province:          str
+    amenities:         list[str]
+    photos:            list[dict]
+    distance_km:       float
+    distance_label:    str
+    primary_photo_url: Optional[str] = None
+    map_url:           str
 
     model_config = {"from_attributes": True}
 

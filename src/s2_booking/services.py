@@ -7,7 +7,7 @@ from sqlalchemy import func
 from .models import Place
 
 
-# Giúp tính khoảng cách giữa 2 điểm GPS (lat/lon) bằng công thức Haversine.
+# Giúp tính khoảng cách đường chim bay giữa 2 điểm GPS (lat/lon) bằng công thức Haversine.
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R    = 6371.0
@@ -50,24 +50,56 @@ def _resolve_photos(photos_json: str, category: str, place_id: str) -> list[dict
     return fixed
 
 
-def _place_to_dict(place: Place, distance_km: float) -> dict:
+def _build_map_url(
+    dest_lat: float,
+    dest_lon: float,
+    origin: tuple[float, float] | None = None,
+) -> str:
+    """
+    Build link Google Maps chỉ đường tới quán.
+    - origin=None        → không truyền origin, Google Maps tự lấy GPS thật của máy
+                            (dùng cho /places/nearby — người dùng đang ở đâu thì tính từ đó)
+    - origin=(lat, lon)  → ép cứng điểm xuất phát
+                            (dùng cho /spots/nearby — xuất phát từ điểm săn mây cố định)
+    """
+    url = f"https://www.google.com/maps/dir/?api=1&destination={dest_lat},{dest_lon}"
+    if origin:
+        url += f"&origin={origin[0]},{origin[1]}"
+    return url
+
+
+def _place_to_dict(
+    place: Place,
+    distance_km: float,
+    origin: tuple[float, float] | None = None,
+) -> dict:
     photos = _resolve_photos(
         place.photos_json or "[]",
         place.category or "cafe",
         place.id,
     )
+
+    distance_label = (
+        f"{int(distance_km * 1000)}m" if distance_km < 1
+        else f"{distance_km:.1f}km"
+    )
+    primary_photo = next((p for p in photos if p.get("is_primary")), photos[0] if photos else None)
+
     return {
-        "id":            place.id,
-        "name":          place.name,
-        "category":      place.category,
-        "lat":           place.lat,
-        "lon":           place.lon,
-        "address":       place.address or "",
-        "province":      place.province or "Lâm Đồng",
-        "amenities":     json.loads(place.amenities_json     or "[]"),
-        "opening_hours": json.loads(place.opening_hours_json or "{}"),
-        "photos":        photos,
-        "distance_km":   distance_km,
+        "id":                place.id,
+        "name":              place.name,
+        "category":          place.category,
+        "lat":               place.lat,
+        "lon":               place.lon,
+        "address":           place.address or "",
+        "province":          place.province or "Lâm Đồng",
+        "amenities":         json.loads(place.amenities_json     or "[]"),
+        "opening_hours":     json.loads(place.opening_hours_json or "{}"),
+        "photos":            photos,
+        "distance_km":       distance_km,
+        "distance_label":    distance_label,
+        "primary_photo_url": primary_photo.get("url") if primary_photo else None,
+        "map_url":           _build_map_url(place.lat, place.lon, origin),
     }
 
 
@@ -84,8 +116,9 @@ def get_nearby_places(
     amenities:   list[str] | None = None,
     page:        int              = 1,
     per_page:    int              = 20,
+    map_origin:  tuple[float, float] | None = None,
 ) -> dict:
-
+    
     query = db.query(Place).filter(Place.is_active == True)
     if category:
         query = query.filter(Place.category == category.lower().strip())
@@ -108,7 +141,7 @@ def get_nearby_places(
     paged = results[start: start + per_page]
 
     return {
-        "places":   [_place_to_dict(p, d) for p, d in paged],
+        "places":   [_place_to_dict(p, d, map_origin) for p, d in paged],
         "page":     page,
         "per_page": per_page,
         "total":    total,
@@ -126,6 +159,7 @@ def search_places(
     lat:     float | None = None,
     lon:     float | None = None,
 ) -> list[dict]:
+    
     query = db.query(Place).filter(
         Place.is_active == True,
         Place.name.ilike(f"%{keyword}%"),

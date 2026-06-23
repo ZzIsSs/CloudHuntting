@@ -33,8 +33,8 @@ def get_nearby_places(
     db: Session                   = Depends(get_db),
 ):
     """
-    Tìm địa điểm ăn uống, nghỉ ngơi gần điểm săn mây tại Đà Lạt.
-    Kết quả luôn sắp xếp theo khoảng cách gần nhất trước.
+    Tìm địa điểm ăn uống, nghỉ ngơi gần GPS người dùng.
+    Sắp xếp theo khoảng cách gần nhất trước.
     """
     result = services.get_nearby_places(
         db, lat, lon, radius_km,
@@ -166,6 +166,7 @@ def get_places_near_spot(
     result = services.get_nearby_places(
         db, cloud_spot.lat, cloud_spot.lon, radius_km,
         category, page=page, per_page=per_page,
+        map_origin=(cloud_spot.lat, cloud_spot.lon),
     )
 
     return NearbySpotResponse(
