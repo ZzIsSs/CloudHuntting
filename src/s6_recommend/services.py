@@ -132,7 +132,9 @@ def score_locations(req: UserPreferenceRequest) -> list[LocationData]:
             continue
             
         # Gọi qua S1 và S5
-        prob = fetch_s1_prediction(loc["name"], loc["lat"], loc["lon"])
+        s1_data = fetch_s1_prediction(loc["name"], loc["lat"], loc["lon"])
+        prob = s1_data.get("probability", 0.0)
+        best_time = s1_data.get("best_time", None)
         trend = fetch_s5_trend(loc["name"])
         
         # Hard Filter 4: Tỷ lệ mây quá thấp hoặc thời tiết xấu (< 30%) -> Loại
@@ -165,6 +167,7 @@ def score_locations(req: UserPreferenceRequest) -> list[LocationData]:
             lat=loc["lat"],
             lon=loc["lon"],
             probability=prob,
+            best_time=best_time,
             trend=trend,
             score=max(0.0, score) # Không cho điểm âm
         ))
@@ -243,13 +246,16 @@ def generate_itinerary(req: UserPreferenceRequest, best_locations: list[Location
             for loc in LOCATIONS:
                 if loc["name"].lower() == req.selected_location.lower():
                     # Gọi lại API lấy tỉ lệ mây mới nhất
-                    prob = fetch_s1_prediction(loc["name"], loc["lat"], loc["lon"])
+                    s1_data = fetch_s1_prediction(loc["name"], loc["lat"], loc["lon"])
+                    prob = s1_data.get("probability", 0.0)
+                    best_time = s1_data.get("best_time", None)
                     trend = fetch_s5_trend(loc["name"])
                     primary_dest = LocationData(
                         location_name=loc["name"],
                         lat=loc["lat"],
                         lon=loc["lon"],
                         probability=prob,
+                        best_time=best_time,
                         trend=trend,
                         score=0.0 # Score thấp do bị loại
                     )
@@ -284,16 +290,36 @@ def generate_itinerary(req: UserPreferenceRequest, best_locations: list[Location
     else:
         message = "Đã tìm thấy lộ trình tuyệt vời nhất cho bạn!"
 
-    # Parse giờ bắt đầu
-    try:
-        start_dt = datetime.strptime(req.start_time, "%H:%M")
-    except:
-        start_dt = datetime.strptime("04:00", "%H:%M")
-        
-    arrive_parking_dt = start_dt + timedelta(minutes=travel_time_mins)
-    arrive_peak_dt = arrive_parking_dt + timedelta(minutes=trekking_mins)
-    sunrise_dt = arrive_peak_dt + timedelta(minutes=30)
-    breakfast_dt = sunrise_dt + timedelta(hours=1, minutes=30)
+    # Reverse Scheduling từ best_time
+    peak_dt = None
+    if getattr(primary_dest, "best_time", None):
+        best_str = primary_dest.best_time
+        try:
+            if "T" in best_str:
+                peak_dt = datetime.fromisoformat(best_str.replace('Z', ''))
+            else:
+                # Format từ Open-Meteo (S1) thường là "%H:%M %d/%m"
+                # Thêm năm hiện tại để datetime hiểu trọn vẹn
+                peak_dt = datetime.strptime(best_str + f"/{datetime.now().year}", "%H:%M %d/%m/%Y")
+        except Exception:
+            peak_dt = None
+
+    if peak_dt:
+        arrive_peak_dt = peak_dt
+        arrive_parking_dt = arrive_peak_dt - timedelta(minutes=trekking_mins)
+        start_dt = arrive_parking_dt - timedelta(minutes=travel_time_mins)
+        sunrise_dt = arrive_peak_dt + timedelta(minutes=30)
+        breakfast_dt = sunrise_dt + timedelta(hours=1, minutes=30)
+    else:
+        # Fallback (Forward Scheduling)
+        try:
+            start_dt = datetime.strptime(req.start_time, "%H:%M")
+        except:
+            start_dt = datetime.strptime("04:00", "%H:%M")
+        arrive_parking_dt = start_dt + timedelta(minutes=travel_time_mins)
+        arrive_peak_dt = arrive_parking_dt + timedelta(minutes=trekking_mins)
+        sunrise_dt = arrive_peak_dt + timedelta(minutes=30)
+        breakfast_dt = sunrise_dt + timedelta(hours=1, minutes=30)
     
     if is_stop_scenario:
         timeline = [

@@ -19,6 +19,7 @@ class LocationData(BaseModel):
     lat: float
     lon: float
     probability: float
+    best_time: Optional[str] = None
     trend: str = "Đi ngang"
     score: float = 0.0
 
