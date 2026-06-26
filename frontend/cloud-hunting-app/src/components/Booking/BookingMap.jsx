@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import styles from './BookingMap.module.css';
+import SovereigntyOverlay from '../LocationMap/SovereigntyOverlay';
 
 // Fix icon đường dẫn mặc định của Leaflet
 import iconMarker from 'leaflet/dist/images/marker-icon.png';
@@ -45,6 +46,7 @@ export default function BookingMap({ places = [], selectedPlace = null }) {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; OpenStreetMap contributors'
           />
+          <SovereigntyOverlay />
           <MapFlyTo selectedPlace={selectedPlace} />
 
           {places.map((place) => {

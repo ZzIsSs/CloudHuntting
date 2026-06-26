@@ -13,6 +13,7 @@ const sovereigntyLabels = [
     name: 'BIỂN ĐÔNG',
     subtitle: 'East Sea',
     position: [15.5, 114.0],
+    icon: '🌊',
     fontSize: 22,
     color: '#0047AB',
     minZoom: 4,
@@ -20,18 +21,20 @@ const sovereigntyLabels = [
   },
   {
     name: 'Quần đảo Hoàng Sa',
-    subtitle: 'Paracel Islands',
+    subtitle: 'Paracel Islands • Đà Nẵng, Việt Nam',
     position: [16.5, 112.0],
-    fontSize: 14,
+    icon: '🏝️ 🇻🇳',
+    fontSize: 15,
     color: '#B22222',
     minZoom: 5,
     maxZoom: 18,
   },
   {
     name: 'Quần đảo Trường Sa',
-    subtitle: 'Spratly Islands',
+    subtitle: 'Spratly Islands • Khánh Hòa, Việt Nam',
     position: [10.0, 114.5],
-    fontSize: 14,
+    icon: '🏝️ 🇻🇳',
+    fontSize: 15,
     color: '#B22222',
     minZoom: 5,
     maxZoom: 18,
@@ -58,15 +61,15 @@ function createLabelIcon(label) {
             -1px  1px 0 #fff,
              1px  1px 0 #fff,
              0 0 8px rgba(255,255,255,0.95);
-          letter-spacing: 3px;
+          letter-spacing: 2px;
         ">
-          ${label.name}
+          ${label.icon ? label.icon + ' ' : ''}${label.name}
         </div>
         <div style="
           font-size: 10px;
           font-weight: 600;
           color: ${label.color};
-          opacity: 0.65;
+          opacity: 0.75;
           text-shadow: 0 0 3px white;
           margin-top: 2px;
           font-style: italic;
@@ -75,8 +78,8 @@ function createLabelIcon(label) {
         </div>
       </div>
     `,
-    iconSize: [280, 55],
-    iconAnchor: [140, 27],
+    iconSize: [300, 55],
+    iconAnchor: [150, 27],
   });
 }
 
