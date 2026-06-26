@@ -5,8 +5,7 @@
     flex-direction: column;
     position: relative;
     min-width: 400px;
-    resize: both;
-    overflow: auto;
+    overflow: hidden;
     border-left: 1px dashed #cbd5e1;
 }
 

@@ -57,7 +57,7 @@ export default function BookingMap({ places = [], selectedPlace = null }) {
                 position={[place.lat, place.lon]}
                 icon={customIcon}
               >
-                <Popup>
+                <Popup autoPan={false}>
                   <div style={{ fontFamily: 'Inter, sans-serif' }}>
                     <h4 style={{ margin: '0 0 5px 0', color: '#0ea5e9', fontSize: '1rem' }}>{place.name}</h4>
                     <p style={{ margin: '0', fontSize: '0.85rem', color: '#0284c7', fontWeight: 600 }}>
