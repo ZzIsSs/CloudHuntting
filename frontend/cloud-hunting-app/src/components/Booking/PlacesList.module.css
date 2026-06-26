@@ -79,3 +79,12 @@
     font-weight: 700;
     color: #10b981;
 }
+
+@media (max-width: 1100px) {
+    .placesList {
+        width: 100%;
+        max-height: 480px;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+    }
+}

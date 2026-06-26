@@ -1,14 +1,15 @@
 .bookingLayout {
-    background: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.65);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.8);
     border-radius: 24px;
-    width: 100%;
-    max-width: 1200px;
-    height: 100%;
-    max-height: 750px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    width: 98%;
+    max-width: 1400px;
+    height: auto;
+    min-height: 780px;
+    max-height: 94vh;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -24,12 +25,17 @@
 }
 
 .headerTitle {
-    font-size: 1.8rem;
-    font-weight: 800;
     color: #0f172a;
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
+}
+
+.headerTitle h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.4;
 }
 
 .backBtn {
@@ -72,4 +78,25 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+}
+
+@media (max-width: 1100px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 20px;
+        gap: 15px;
+    }
+    .headerActions {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .filterBtn {
+        padding: 8px 14px;
+        font-size: 0.9rem;
+    }
+    .bodyContent {
+        flex-direction: column;
+        overflow-y: auto;
+    }
 }

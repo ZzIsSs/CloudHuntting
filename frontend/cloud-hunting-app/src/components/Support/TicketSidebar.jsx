@@ -12,15 +12,20 @@ export default function TicketSidebar({ activeTicketId, onSelectTicket }) {
       try {
         const token = localStorage.getItem('accessToken');
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-        const res = await fetch('http://127.0.0.1:8000/api/v1/content/tickets', { headers });
+        const res = await fetch('http://127.0.0.1:8000/content/tickets', { headers });
         if (!res.ok) throw new Error('Failed to fetch tickets');
         const data = await res.json();
-        setTickets(data);
-        if (data.length > 0 && !activeTicketId) {
-          onSelectTicket(data[0].id);
+        if (Array.isArray(data)) {
+          setTickets(data);
+          if (data.length > 0 && !activeTicketId) {
+            onSelectTicket(data[0].id);
+          }
+        } else {
+          setTickets([]);
         }
       } catch (e) {
         console.error(e);
+        setTickets([]);
       } finally {
         setLoading(false);
       }
@@ -40,7 +45,7 @@ export default function TicketSidebar({ activeTicketId, onSelectTicket }) {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       };
-      const res = await fetch('http://127.0.0.1:8000/api/v1/content/tickets', {
+      const res = await fetch('http://127.0.0.1:8000/content/tickets', {
         method: 'POST',
         headers,
         body: JSON.stringify({ title, description: desc })

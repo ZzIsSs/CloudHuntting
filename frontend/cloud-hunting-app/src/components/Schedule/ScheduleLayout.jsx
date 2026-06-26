@@ -112,7 +112,7 @@ export default function ScheduleLayout() {
                       style={{cursor: 'pointer'}}
                     >
                       <div className={styles.locName}>{loc.location_name}</div>
-                      <div className={styles.locProb}>{loc.probability.toFixed(1)}%</div>
+                      <div className={styles.locProb}>{(loc.probability || 0).toFixed(1)}%</div>
                       <div className={`${styles.locTrend} ${getTrendClass(loc.trend)}`}>{loc.trend}</div>
                     </div>
                   ))}

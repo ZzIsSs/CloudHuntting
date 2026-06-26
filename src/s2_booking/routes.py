@@ -28,7 +28,7 @@ def get_nearby_places(
     category:    str | None       = Query(None, description="Loại quán: cafe | restaurant | homestay | hotel | camping"),
     amenities:   list[str] | None = Query(None, description="Yêu cầu: wifi, parking, cloud_view..."),
     page:        int              = Query(1,  ge=1, description="Trang hiện tại"),
-    per_page:    int              = Query(20, ge=1, le=50, description="Số địa điểm mỗi trang"),
+    per_page:    int              = Query(100, ge=1, le=200, description="Số địa điểm mỗi trang"),
     current_user: CurrentUser     = Depends(get_current_user),
     db: Session                   = Depends(get_db),
 ):
@@ -61,7 +61,7 @@ def get_nearby_by_name(
     radius_km:     float          = Query(5.0, ge=0.1, le=50),
     category:      str | None     = Query(None),
     page:          int            = Query(1, ge=1),
-    per_page:      int            = Query(20, ge=1, le=50),
+    per_page:      int            = Query(100, ge=1, le=200),
     current_user:  CurrentUser    = Depends(get_current_user),
     db: Session                   = Depends(get_db),
 ):
@@ -145,7 +145,7 @@ def get_places_near_spot(
     radius_km:    float        = Query(5.0, ge=0.1, le=20, description="Mặc định 5km"),
     category:     str | None   = Query(None, description="Loại quán: cafe | restaurant | homestay | hotel | camping"),
     page:         int          = Query(1, ge=1),
-    per_page:     int          = Query(20, ge=1, le=50),
+    per_page:     int          = Query(100, ge=1, le=200),
     current_user: CurrentUser  = Depends(get_current_user),
     db: Session                = Depends(get_db),
 ):

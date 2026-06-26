@@ -118,10 +118,15 @@ export default function ReviewCard() {
       setLoading(true);
       const data = await fetchReviews(tourId);
       // Backend trả về mảng reviews, sắp xếp mới nhất lên đầu
-      const sortedData = data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      setReviews(sortedData);
+      if (Array.isArray(data)) {
+        const sortedData = data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        setReviews(sortedData);
+      } else {
+        setReviews([]);
+      }
     } catch (err) {
       console.error('Failed to load reviews:', err);
+      setReviews([]);
     } finally {
       setLoading(false);
     }
@@ -474,7 +479,7 @@ export default function ReviewCard() {
               <div style={{ fontSize: '3rem', marginBottom: '10px' }}>⏰</div>
               <h3 style={{ margin: '0 0 10px 0', color: '#0f172a', fontSize: '1.4rem' }}>Gợi ý Lịch Trình Săn Mây</h3>
               <p style={{ color: '#475569', fontSize: '1rem', lineHeight: '1.6', marginBottom: '20px' }}>
-                AI dự báo thời điểm <strong>{displayName}</strong> có mây đẹp nhất là vào lúc <strong style={{ color: '#0ea5e9', fontSize: '1.2rem' }}>{suggestedTime.bestTime}</strong> (Tỷ lệ: {suggestedTime.prob.toFixed(0)}%).
+                AI dự báo thời điểm <strong>{displayName}</strong> có mây đẹp nhất là vào lúc <strong style={{ color: '#0ea5e9', fontSize: '1.2rem' }}>{suggestedTime.bestTime}</strong> (Tỷ lệ: {(suggestedTime.prob || 0).toFixed(0)}%).
                 <br /><br />
                 Đã trừ hao thời gian di chuyển và leo núi, bạn nên xuất phát vào lúc:
               </p>

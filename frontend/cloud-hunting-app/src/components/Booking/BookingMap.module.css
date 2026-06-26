@@ -1,13 +1,18 @@
 .mapSection {
-    flex: 1;
+    flex: 1.6;
     padding: 20px;
     display: flex;
     flex-direction: column;
     position: relative;
+    min-width: 400px;
+    resize: both;
+    overflow: auto;
+    border-left: 1px dashed #cbd5e1;
 }
 
 .mapContainer {
     flex: 1;
+    min-height: 520px;
     background: #e2e8f0;
     border-radius: 16px;
     overflow: hidden;
@@ -91,4 +96,16 @@
 .btnBook:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 15px rgba(2, 132, 199, 0.4);
+}
+
+@media (max-width: 1100px) {
+    .mapSection {
+        min-width: 100%;
+        border-left: none;
+        min-height: 450px;
+        padding: 15px;
+    }
+    .mapContainer {
+        min-height: 420px;
+    }
 }
