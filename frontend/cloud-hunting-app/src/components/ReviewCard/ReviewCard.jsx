@@ -278,7 +278,7 @@ export default function ReviewCard() {
             alt={displayName}
           />
           <div className={styles.actionButtons}>
-            <button className={styles.utilityBtn} onClick={() => setActiveTab('utilities')}>
+            <button className={styles.utilityBtn} onClick={() => navigate('/booking', { state: { ...location.state, name: displayName } })}>
               ☕ Khám phá Tiện ích
             </button>
           </div>

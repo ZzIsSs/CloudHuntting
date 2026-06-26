@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styles from './BookingLayout.module.css';
 import PlacesList from './PlacesList';
 import BookingMap from './BookingMap';
@@ -7,6 +7,13 @@ import { fetchNearbyUtilities } from '../../bridge/s2_api';
 
 export default function BookingLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Nhận tọa độ và tên điểm săn mây từ trang xếp hạng truyền sang
+  const targetLat = location.state?.lat || 11.9404;
+  const targetLon = location.state?.lon || 108.4583;
+  const targetName = location.state?.name || 'ta';
+
   const [allPlaces, setAllPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
@@ -15,9 +22,9 @@ export default function BookingLayout() {
     async function loadFilteredData() {
       try {
         setLoading(true);
-        // Chỉ gửi các tham số tiện nghi chuẩn DB (wifi, cloud_view) xuống Backend
+        // Chỉ gửi các tham số tiện nghi chuẩn DB xuống Backend
         const dbAmenities = selectedAmenities.filter(a => a === 'cloud_view' || a === 'wifi');
-        const data = await fetchNearbyUtilities(11.94, 108.44, 'all', dbAmenities, 25, 50);
+        const data = await fetchNearbyUtilities(targetLat, targetLon, 'all', dbAmenities, 25, 50);
         let list = data?.places || [];
 
         // Ánh xạ thông minh đặc thù du lịch Đà Lạt cho các chip mở rộng
@@ -81,7 +88,7 @@ export default function BookingLayout() {
       <div className={styles.header}>
         <div className={styles.headerTitle}>
           <button className={styles.backBtn} onClick={() => navigate(-1)}>←</button>
-          <h1>🌟 Tiện ích quanh ta</h1>
+          <h1>🌟 Tiện ích quanh {targetName}</h1>
         </div>
 
         <div className={styles.headerActions} style={{marginTop: '15px'}}>
