@@ -2,29 +2,13 @@ import { useState, useEffect } from 'react';
 import styles from './NearbyUtilitiesPanel.module.css';
 import { fetchNearbyUtilities } from '../../bridge/s2_api';
 
-function getRealisticPrice(category, priceLevel) {
-  const level = priceLevel || 2;
-  switch (category) {
-    case 'cafe':
-      if (level === 1) return '20.000đ - 35.000đ';
-      if (level === 2) return '35.000đ - 55.000đ';
-      if (level >= 3) return '55.000đ - 90.000đ';
-      break;
-    case 'restaurant':
-      if (level === 1) return '30.000đ - 50.000đ';
-      if (level === 2) return '50.000đ - 150.000đ';
-      if (level >= 3) return '150.000đ - 500.000đ';
-      break;
-    case 'homestay':
-    case 'hotel':
-      if (level === 1) return '150.000đ - 300.000đ/đêm';
-      if (level === 2) return '350.000đ - 600.000đ/đêm';
-      if (level >= 3) return '700.000đ - 1.500.000đ/đêm';
-      break;
-    case 'camping':
-      return '100.000đ - 250.000đ/người';
-  }
-  return 'Giá: Đang cập nhật';
+function getPriceSegmentLabel(priceLevel) {
+  const lvl = Number(priceLevel ?? 2);
+  if (lvl <= 0) return 'Miễn phí';
+  if (lvl === 1) return 'Tiết kiệm';
+  if (lvl === 2) return 'Bình dân';
+  if (lvl === 3) return 'Trung lưu';
+  return 'Sang trọng';
 }
 
 export default function NearbyUtilitiesPanel({ onBack, locName, lat: propLat, lon: propLon }) {
@@ -78,10 +62,9 @@ export default function NearbyUtilitiesPanel({ onBack, locName, lat: propLat, lo
                 <div className={styles.utilInfo}>
                   <div className={styles.utilHeader}>
                     <h3>{item.name}</h3>
-                    <span className={styles.rating}>⭐ {(item.avg_rating || 4.8).toFixed(1)}</span>
                   </div>
                   <p className={styles.category}>{item.category} • Cách đây {item.distance_km || '1.5'} km</p>
-                  <p className={styles.price}>{getRealisticPrice(item.category, item.price_level)}</p>
+                  <p className={styles.price} style={{ color: '#059669', fontWeight: 700 }}>💰 {getPriceSegmentLabel(item.price_level)}</p>
                 </div>
               </div>
             ))}

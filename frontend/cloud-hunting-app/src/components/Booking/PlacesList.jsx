@@ -1,6 +1,15 @@
 import React from 'react';
 import styles from './PlacesList.module.css';
 
+function getPriceSegmentLabel(priceLevel) {
+  const lvl = Number(priceLevel ?? 2);
+  if (lvl <= 0) return 'Miễn phí';
+  if (lvl === 1) return 'Tiết kiệm';
+  if (lvl === 2) return 'Bình dân';
+  if (lvl === 3) return 'Trung lưu';
+  return 'Sang trọng';
+}
+
 export default function PlacesList({ places = [], loading = false, onSelectPlace = () => {}, selectedPlaceId = null }) {
   if (loading) {
     return <div className={styles.placesList} style={{ padding: '20px' }}>Đang lọc danh sách địa điểm theo tiêu chí thực tế...</div>;
@@ -34,8 +43,11 @@ export default function PlacesList({ places = [], loading = false, onSelectPlace
                   {place.category === 'hotel' ? 'Khách sạn' : place.category === 'homestay' ? 'Homestay' : place.category === 'cafe' ? 'Quán Cafe' : place.category === 'camping' ? 'Cắm trại' : place.category}
                 </span>
               </div>
-              <div className={styles.placeStats}>
+              <div className={styles.placeStats} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600, color: '#0284c7' }}>📍 Cách {place.distance_label || '1.2 km'}</span>
+                <span style={{ fontWeight: 700, color: '#059669', background: '#ecfdf5', padding: '2px 8px', borderRadius: '6px', fontSize: '0.78rem' }}>
+                  💰 {getPriceSegmentLabel(place.price_level)}
+                </span>
               </div>
             </div>
           </div>
