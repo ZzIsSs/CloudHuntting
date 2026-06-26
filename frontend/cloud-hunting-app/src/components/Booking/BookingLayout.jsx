@@ -74,14 +74,11 @@ export default function BookingLayout() {
   };
 
   const [selectedPlace, setSelectedPlace] = useState(null);
-  const [selectedPriceLevel, setSelectedPriceLevel] = useState('all');
 
-  // Lọc ra danh sách gửi xuống PlacesList theo tab và phân khúc giá đang chọn
-  const displayPlaces = allPlaces.filter(p => {
-    if (activeCategory !== 'all' && p.category !== activeCategory) return false;
-    if (selectedPriceLevel !== 'all' && Number(p.price_level ?? 2) !== Number(selectedPriceLevel)) return false;
-    return true;
-  });
+  // Lọc ra danh sách gửi xuống PlacesList theo tab đang chọn
+  const displayPlaces = activeCategory === 'all' 
+    ? allPlaces 
+    : allPlaces.filter(p => p.category === activeCategory);
 
   return (
     <div className={styles.bookingLayout}>
@@ -136,40 +133,6 @@ export default function BookingLayout() {
               {selectedAmenities.includes(chip.id) ? '☑️ ' : '☐ '}{chip.label}
             </button>
           ))}
-        </div>
-
-        {/* Hàng lọc theo Phân khúc giá dạng Dropdown xổ xuống */}
-        <div style={{ display: 'flex', gap: '12px', marginTop: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: '600', color: '#059669', fontSize: '0.9rem' }}>💰 Phân khúc giá:</span>
-          <select
-            value={selectedPriceLevel}
-            onChange={(e) => {
-              const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
-              setSelectedPriceLevel(val);
-              setSelectedPlace(null);
-            }}
-            style={{
-              padding: '7px 16px',
-              borderRadius: '12px',
-              border: selectedPriceLevel !== 'all' ? '2px solid #059669' : '1px solid #cbd5e1',
-              background: selectedPriceLevel !== 'all' ? '#ecfdf5' : '#ffffff',
-              color: selectedPriceLevel !== 'all' ? '#047857' : '#334155',
-              fontWeight: selectedPriceLevel !== 'all' ? 'bold' : '600',
-              cursor: 'pointer',
-              outline: 'none',
-              fontSize: '0.86rem',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-              transition: 'all 0.2s',
-              fontFamily: 'Inter, sans-serif'
-            }}
-          >
-            <option value="all">🌟 Tất cả phân khúc</option>
-            <option value="0">🎁 Miễn phí</option>
-            <option value="1">🪙 Tiết kiệm</option>
-            <option value="2">💵 Bình dân</option>
-            <option value="3">💳 Trung lưu</option>
-            <option value="4">👑 Sang trọng</option>
-          </select>
         </div>
       </div>
 

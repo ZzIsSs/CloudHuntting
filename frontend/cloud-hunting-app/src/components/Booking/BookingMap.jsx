@@ -29,15 +29,6 @@ function MapFlyTo({ selectedPlace }) {
   return null;
 }
 
-function getPriceSegmentLabel(priceLevel) {
-  const lvl = Number(priceLevel ?? 2);
-  if (lvl <= 0) return 'Miễn phí';
-  if (lvl === 1) return 'Tiết kiệm';
-  if (lvl === 2) return 'Bình dân';
-  if (lvl === 3) return 'Trung lưu';
-  return 'Sang trọng';
-}
-
 export default function BookingMap({ places = [], selectedPlace = null }) {
   const defaultLat = 11.9404;
   const defaultLon = 108.4583;
@@ -70,7 +61,7 @@ export default function BookingMap({ places = [], selectedPlace = null }) {
                   <div style={{ fontFamily: 'Inter, sans-serif' }}>
                     <h4 style={{ margin: '0 0 5px 0', color: '#0ea5e9', fontSize: '1rem' }}>{place.name}</h4>
                     <p style={{ margin: '0', fontSize: '0.85rem', color: '#0284c7', fontWeight: 600 }}>
-                      📍 {place.distance_label || '1.2 km'} • <span style={{ color: '#059669' }}>💰 {getPriceSegmentLabel(place.price_level)}</span>
+                      📍 {place.distance_label || '1.2 km'}
                     </p>
                   </div>
                 </Popup>
@@ -84,7 +75,7 @@ export default function BookingMap({ places = [], selectedPlace = null }) {
           <div className={styles.bookingWidget}>
             <div className={styles.widgetInfo}>
               <h3 style={{ color: '#0ea5e9' }}>🎯 Đang chọn: {selectedPlace.name}</h3>
-              <p>📍 {selectedPlace.address || 'Đà Lạt, Lâm Đồng'} • <span style={{ color: '#059669', fontWeight: 700 }}>💰 {getPriceSegmentLabel(selectedPlace.price_level)}</span></p>
+              <p>📍 {selectedPlace.address || 'Đà Lạt, Lâm Đồng'}</p>
             </div>
           </div>
         )}

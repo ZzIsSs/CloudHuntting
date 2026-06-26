@@ -2,15 +2,6 @@ import { useState, useEffect } from 'react';
 import styles from './NearbyUtilitiesPanel.module.css';
 import { fetchNearbyUtilities } from '../../bridge/s2_api';
 
-function getPriceSegmentLabel(priceLevel) {
-  const lvl = Number(priceLevel ?? 2);
-  if (lvl <= 0) return 'Miễn phí';
-  if (lvl === 1) return 'Tiết kiệm';
-  if (lvl === 2) return 'Bình dân';
-  if (lvl === 3) return 'Trung lưu';
-  return 'Sang trọng';
-}
-
 export default function NearbyUtilitiesPanel({ onBack, locName, lat: propLat, lon: propLon }) {
   const [utilities, setUtilities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +55,6 @@ export default function NearbyUtilitiesPanel({ onBack, locName, lat: propLat, lo
                     <h3>{item.name}</h3>
                   </div>
                   <p className={styles.category}>{item.category} • Cách đây {item.distance_km || '1.5'} km</p>
-                  <p className={styles.price} style={{ color: '#059669', fontWeight: 700 }}>💰 {getPriceSegmentLabel(item.price_level)}</p>
                 </div>
               </div>
             ))}
