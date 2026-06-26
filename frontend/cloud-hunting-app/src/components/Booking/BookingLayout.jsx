@@ -131,38 +131,38 @@ export default function BookingLayout() {
           ))}
         </div>
 
-        {/* Hàng lọc theo Phân khúc giá */}
-        <div style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: '600', color: '#059669', alignSelf: 'center' }}>💰 Phân khúc giá:</span>
-          {[
-            { id: 'all', label: '🌟 Tất cả' },
-            { id: 0, label: '🎁 Miễn phí' },
-            { id: 1, label: '🪙 Tiết kiệm' },
-            { id: 2, label: '💵 Bình dân' },
-            { id: 3, label: '💳 Trung lưu' },
-            { id: 4, label: '👑 Sang trọng' }
-          ].map(price => {
-            const isActive = selectedPriceLevel === price.id;
-            return (
-              <button
-                key={price.id}
-                onClick={() => { setSelectedPriceLevel(price.id); setSelectedPlace(null); }}
-                style={{
-                  padding: '5px 13px',
-                  borderRadius: '16px',
-                  border: isActive ? '2px solid #059669' : '1px solid #d1d5db',
-                  background: isActive ? '#ecfdf5' : '#f9fafb',
-                  color: isActive ? '#047857' : '#4b5563',
-                  fontWeight: isActive ? 'bold' : 'normal',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  fontSize: '0.82rem'
-                }}
-              >
-                {price.label}
-              </button>
-            );
-          })}
+        {/* Hàng lọc theo Phân khúc giá dạng Dropdown xổ xuống */}
+        <div style={{ display: 'flex', gap: '12px', marginTop: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: '600', color: '#059669', fontSize: '0.9rem' }}>💰 Phân khúc giá:</span>
+          <select
+            value={selectedPriceLevel}
+            onChange={(e) => {
+              const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+              setSelectedPriceLevel(val);
+              setSelectedPlace(null);
+            }}
+            style={{
+              padding: '7px 16px',
+              borderRadius: '12px',
+              border: selectedPriceLevel !== 'all' ? '2px solid #059669' : '1px solid #cbd5e1',
+              background: selectedPriceLevel !== 'all' ? '#ecfdf5' : '#ffffff',
+              color: selectedPriceLevel !== 'all' ? '#047857' : '#334155',
+              fontWeight: selectedPriceLevel !== 'all' ? 'bold' : '600',
+              cursor: 'pointer',
+              outline: 'none',
+              fontSize: '0.86rem',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              transition: 'all 0.2s',
+              fontFamily: 'Inter, sans-serif'
+            }}
+          >
+            <option value="all">🌟 Tất cả phân khúc</option>
+            <option value="0">🎁 Miễn phí</option>
+            <option value="1">🪙 Tiết kiệm</option>
+            <option value="2">💵 Bình dân</option>
+            <option value="3">💳 Trung lưu</option>
+            <option value="4">👑 Sang trọng</option>
+          </select>
         </div>
       </div>
 
