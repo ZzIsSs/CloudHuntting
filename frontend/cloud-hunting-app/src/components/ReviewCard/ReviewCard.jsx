@@ -63,6 +63,8 @@ export default function ReviewCard() {
   
   // Modal states
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [suggestedTime, setSuggestedTime] = useState(null);
+  const [loadingSuggestion, setLoadingSuggestion] = useState(false);
 
   // Edit states
   const [editingReviewId, setEditingReviewId] = useState(null);
@@ -202,6 +204,54 @@ export default function ReviewCard() {
     }
   };
 
+  const handleSuggestStartTime = async () => {
+    setLoadingSuggestion(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const headers = { 
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      };
+      const payload = {
+          user_id: currentUserId ? String(currentUserId) : "guest",
+          start_time: "04:00",
+          start_location: "Trung tâm",
+          max_distance_km: 30.0,
+          travel_style: "Sống ảo nhẹ nhàng",
+          preferred_vibe: "Thương mại",
+          vehicle_type: "xe máy",
+          selected_location: displayName
+      };
+      const res = await fetch('http://127.0.0.1:8000/api/s6/recommend', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const primaryLoc = data.recommended_locations?.[0];
+        const departureStep = data.timeline?.find(s => s.action.toLowerCase().includes("xuất phát"));
+        
+        if (primaryLoc && departureStep) {
+          setSuggestedTime({
+            bestTime: primaryLoc.best_time,
+            departTime: departureStep.time,
+            prob: primaryLoc.probability
+          });
+        } else {
+          alert("Không thể tính toán được thời gian phù hợp lúc này.");
+        }
+      } else {
+        alert("Có lỗi xảy ra khi kết nối máy chủ AI.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Lỗi khi lấy gợi ý thời gian.");
+    } finally {
+      setLoadingSuggestion(false);
+    }
+  };
+
   return (
     <div className={styles.reviewCard}>
       {/* Left Panel: Header + Image */}
@@ -315,34 +365,59 @@ export default function ReviewCard() {
           ))}
         </div>
 
-        {/* Floating Write Review Button */}
-        <button 
-          className={styles.writeReviewFloatBtn}
-          onClick={() => setShowReviewModal(true)}
-          style={{
-            position: 'sticky',
-            bottom: '15px',
-            marginLeft: 'auto',
-            marginRight: '15px',
-            marginTop: '15px',
-            padding: '12px 24px',
-            background: 'linear-gradient(135deg, #10b981, #059669)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '25px',
-            fontWeight: 'bold',
-            fontSize: '1rem',
-            cursor: 'pointer',
-            boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)',
-            zIndex: 10,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            width: 'fit-content'
-          }}
-        >
-          ✍️ Viết đánh giá
-        </button>
+        {/* Floating Action Buttons */}
+        <div style={{
+          position: 'sticky',
+          bottom: '15px',
+          display: 'flex',
+          gap: '10px',
+          justifyContent: 'flex-end',
+          marginRight: '15px',
+          marginTop: '15px',
+          zIndex: 10
+        }}>
+          <button 
+            onClick={handleSuggestStartTime}
+            disabled={loadingSuggestion}
+            style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '25px',
+              fontWeight: 'bold',
+              fontSize: '1rem',
+              cursor: loadingSuggestion ? 'wait' : 'pointer',
+              boxShadow: '0 4px 15px rgba(14, 165, 233, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              opacity: loadingSuggestion ? 0.7 : 1
+            }}
+          >
+            {loadingSuggestion ? '⏳ Đang tính toán...' : '🤖 Gợi ý thời điểm bắt đầu'}
+          </button>
+          <button 
+            className={styles.writeReviewFloatBtn}
+            onClick={() => setShowReviewModal(true)}
+            style={{
+              padding: '12px 24px',
+              background: 'linear-gradient(135deg, #10b981, #059669)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '25px',
+              fontWeight: 'bold',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            ✍️ Viết đánh giá
+          </button>
+        </div>
 
         {/* Review Form Modal */}
         {showReviewModal && (
@@ -382,6 +457,43 @@ export default function ReviewCard() {
                   Hủy
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Suggestion Time Modal */}
+        {suggestedTime && (
+          <div onClick={() => setSuggestedTime(null)} style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center'
+          }}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: 'white', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '400px',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)', textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '10px' }}>⏰</div>
+              <h3 style={{ margin: '0 0 10px 0', color: '#0f172a', fontSize: '1.4rem' }}>Gợi ý Lịch Trình Săn Mây</h3>
+              <p style={{ color: '#475569', fontSize: '1rem', lineHeight: '1.6', marginBottom: '20px' }}>
+                AI dự báo thời điểm <strong>{displayName}</strong> có mây đẹp nhất là vào lúc <strong style={{ color: '#0ea5e9', fontSize: '1.2rem' }}>{suggestedTime.bestTime}</strong> (Tỷ lệ: {suggestedTime.prob.toFixed(0)}%).
+                <br /><br />
+                Đã trừ hao thời gian di chuyển và leo núi, bạn nên xuất phát vào lúc:
+              </p>
+              <div style={{
+                background: 'linear-gradient(135deg, #f0f9ff, #e0f2fe)',
+                padding: '20px',
+                borderRadius: '15px',
+                border: '2px dashed #38bdf8',
+                marginBottom: '25px'
+              }}>
+                <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#0284c7' }}>{suggestedTime.departTime}</span>
+              </div>
+              
+              <button
+                onClick={() => setSuggestedTime(null)}
+                style={{ width: '100%', padding: '12px', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.1rem' }}
+              >
+                Đã hiểu!
+              </button>
             </div>
           </div>
         )}

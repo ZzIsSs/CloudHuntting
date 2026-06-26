@@ -17,7 +17,7 @@ chuyen tiep request den dung microservice phia sau.
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .routes import router
@@ -47,22 +47,52 @@ app.add_middleware(
 # --- API Routes (proxy) ---
 app.include_router(router)
 
-# --- Static Files: Serve frontend ---
+# --- Static Files: Serve frontend assets & SPA ---
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "cloud-hunting-app", "dist")
 frontend_dir = os.path.abspath(frontend_dir)
-if os.path.isdir(frontend_dir):
-    app.mount("/app", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
-# --- Static Files: Serve pic ---
+if os.path.isdir(frontend_dir):
+    for subFolder in ["assets", "images", "sound", "pic"]:
+        sub_path = os.path.join(frontend_dir, subFolder)
+        if os.path.isdir(sub_path):
+            app.mount(f"/{subFolder}", StaticFiles(directory=sub_path), name=subFolder)
+
+# --- Static Files: Serve project root pic ---
 pic_dir = os.path.join(os.path.dirname(__file__), "..", "..", "pic")
 pic_dir = os.path.abspath(pic_dir)
 if os.path.isdir(pic_dir):
-    app.mount("/pic", StaticFiles(directory=pic_dir), name="pic")
+    app.mount("/project_pic", StaticFiles(directory=pic_dir), name="project_pic")
+
+@app.get("/app", include_in_schema=False)
+async def serve_frontend_spa_no_slash():
+    index_path = os.path.join(frontend_dir, "index.html")
+    if os.path.isfile(index_path):
+        return FileResponse(index_path)
+    return {"error": "index.html not found"}
+
+@app.get("/app/{path:path}", include_in_schema=False)
+async def serve_frontend_spa(path: str):
+    if not os.path.isdir(frontend_dir):
+        return {"error": "Frontend dist directory not found"}
+    file_path = os.path.join(frontend_dir, path)
+    if path and os.path.isfile(file_path):
+        return FileResponse(file_path)
+    index_path = os.path.join(frontend_dir, "index.html")
+    if os.path.isfile(index_path):
+        return FileResponse(index_path)
+    return {"error": "index.html not found"}
+
+@app.get("/{filename}", include_in_schema=False)
+async def serve_root_files(filename: str):
+    file_path = os.path.join(frontend_dir, filename)
+    if os.path.isfile(file_path):
+        return FileResponse(file_path)
+    return RedirectResponse(url="/app")
 
 # --- Root redirect ---
 @app.get("/", include_in_schema=False)
 def root():
-    return RedirectResponse(url="/app/")
+    return RedirectResponse(url="/app")
 
 # --- Startup event ---
 @app.on_event("startup")
