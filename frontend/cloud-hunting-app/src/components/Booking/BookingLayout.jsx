@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import styles from './BookingLayout.module.css';
 import PlacesList from './PlacesList';
 import BookingMap from './BookingMap';
+import CloudGameLayer from '../CloudGameLayer/CloudGameLayer';
+import TopRightNav from '../TopRightNav/TopRightNav';
 import { fetchNearbyUtilities } from '../../bridge/s2_api';
 
 export default function BookingLayout() {
@@ -80,73 +82,83 @@ export default function BookingLayout() {
     ? allPlaces 
     : allPlaces.filter(p => p.category === activeCategory);
 
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+    navigate('/');
+  };
+
   return (
-    <div className={styles.bookingLayout}>
-      <div className={styles.header}>
-        <div className={styles.headerTitle}>
-          <button className={styles.backBtn} onClick={() => navigate(-1)}>←</button>
-          <h1>🌟 Tiện ích quanh {targetName}</h1>
-        </div>
+    <div style={{ width: '100vw', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', position: 'relative', background: '#bae6fd' }}>
+      <CloudGameLayer />
+      <TopRightNav onLogout={handleLogout} />
 
-        <div className={styles.headerActions} style={{marginTop: '15px'}}>
-          <button 
-            className={`${styles.filterBtn} ${activeCategory === 'all' ? styles.active : ''}`}
-            onClick={() => { setActiveCategory('all'); setSelectedPlace(null); }}
-          >
-            🌟 Tất cả ({liveCounts.all})
-          </button>
-          {categoryKeys.map(cat => (
+      <div className={styles.bookingLayout} style={{ position: 'absolute', top: '85px', height: 'calc(100vh - 105px)', zIndex: 100, width: '95%', maxWidth: '1350px' }}>
+        <div className={styles.header}>
+          <div className={styles.headerTitle}>
+            <button className={styles.backBtn} onClick={() => navigate(-1)}>←</button>
+            <h1>🌟 Tiện ích quanh {targetName}</h1>
+          </div>
+
+          <div className={styles.headerActions} style={{marginTop: '15px'}}>
             <button 
-              key={cat}
-              className={`${styles.filterBtn} ${activeCategory === cat ? styles.active : ''}`}
-              onClick={() => { setActiveCategory(cat); setSelectedPlace(null); }}
+              className={`${styles.filterBtn} ${activeCategory === 'all' ? styles.active : ''}`}
+              onClick={() => { setActiveCategory('all'); setSelectedPlace(null); }}
             >
-              {getCatLabel(cat)} ({liveCounts[cat] || 0})
+              🌟 Tất cả ({liveCounts.all})
             </button>
-          ))}
+            {categoryKeys.map(cat => (
+              <button 
+                key={cat}
+                className={`${styles.filterBtn} ${activeCategory === cat ? styles.active : ''}`}
+                onClick={() => { setActiveCategory(cat); setSelectedPlace(null); }}
+              >
+                {getCatLabel(cat)} ({liveCounts[cat] || 0})
+              </button>
+            ))}
+          </div>
+          
+          {/* Hàng lọc Tiện nghi nhanh */}
+          <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: '600', color: '#334155', alignSelf: 'center' }}>⚡ Lọc tiện nghi:</span>
+            {[
+              { id: 'cloud_view', label: '☁️ View Săn Mây' },
+              { id: 'parking', label: '🅿️ Có bãi đỗ xe' },
+              { id: 'wifi', label: '📶 Wifi mạnh' },
+              { id: '247', label: '🌙 Mở cửa đêm 4h sáng' }
+            ].map(chip => (
+              <button
+                key={chip.id}
+                onClick={() => toggleAmenity(chip.id)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  border: selectedAmenities.includes(chip.id) ? '2px solid #0ea5e9' : '1px solid #cbd5e1',
+                  background: selectedAmenities.includes(chip.id) ? '#e0f2fe' : 'white',
+                  color: selectedAmenities.includes(chip.id) ? '#0284c7' : '#475569',
+                  fontWeight: selectedAmenities.includes(chip.id) ? 'bold' : 'normal',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '0.85rem'
+                }}
+              >
+                {selectedAmenities.includes(chip.id) ? '☑️ ' : '☐ '}{chip.label}
+              </button>
+            ))}
+          </div>
         </div>
-        
-        {/* Hàng lọc Tiện nghi nhanh */}
-        <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: '600', color: '#334155', alignSelf: 'center' }}>⚡ Lọc tiện nghi:</span>
-          {[
-            { id: 'cloud_view', label: '☁️ View Săn Mây' },
-            { id: 'parking', label: '🅿️ Có bãi đỗ xe' },
-            { id: 'wifi', label: '📶 Wifi mạnh' },
-            { id: '247', label: '🌙 Mở cửa đêm 4h sáng' }
-          ].map(chip => (
-            <button
-              key={chip.id}
-              onClick={() => toggleAmenity(chip.id)}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '20px',
-                border: selectedAmenities.includes(chip.id) ? '2px solid #0ea5e9' : '1px solid #cbd5e1',
-                background: selectedAmenities.includes(chip.id) ? '#e0f2fe' : 'white',
-                color: selectedAmenities.includes(chip.id) ? '#0284c7' : '#475569',
-                fontWeight: selectedAmenities.includes(chip.id) ? 'bold' : 'normal',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                fontSize: '0.85rem'
-              }}
-            >
-              {selectedAmenities.includes(chip.id) ? '☑️ ' : '☐ '}{chip.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
-      <div className={styles.bodyContent}>
-        <PlacesList 
-          places={displayPlaces} 
-          loading={loading} 
-          onSelectPlace={setSelectedPlace}
-          selectedPlaceId={selectedPlace?.id}
-        />
-        <BookingMap 
-          places={displayPlaces}
-          selectedPlace={selectedPlace}
-        />
+        <div className={styles.bodyContent}>
+          <PlacesList 
+            places={displayPlaces} 
+            loading={loading} 
+            onSelectPlace={setSelectedPlace}
+            selectedPlaceId={selectedPlace?.id}
+          />
+          <BookingMap 
+            places={displayPlaces}
+            selectedPlace={selectedPlace}
+          />
+        </div>
       </div>
     </div>
   );
