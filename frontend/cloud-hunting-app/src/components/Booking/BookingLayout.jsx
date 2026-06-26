@@ -76,6 +76,7 @@ export default function BookingLayout() {
   };
 
   const [selectedPlace, setSelectedPlace] = useState(null);
+  const [isOpenAmenityDropdown, setIsOpenAmenityDropdown] = useState(false);
 
   // Lọc ra danh sách gửi xuống PlacesList theo tab đang chọn
   const displayPlaces = activeCategory === 'all' 
@@ -116,17 +117,14 @@ export default function BookingLayout() {
               </button>
             ))}
 
-            {/* Hộp chọn lọc Tiện nghi dạng Dropdown gọn gàng */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '6px' }}>
-              <span style={{ fontWeight: '600', color: '#0284c7', fontSize: '0.9rem' }}>⚡ Tiện nghi:</span>
-              <select
-                value={selectedAmenities[0] || 'all'}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedAmenities(val === 'all' ? [] : [val]);
-                  setSelectedPlace(null);
-                }}
+            {/* Hộp chọn lọc Tiện nghi dạng Dropdown Multi-Select gọn gàng */}
+            <div style={{ position: 'relative', marginLeft: '6px' }}>
+              <button
+                onClick={() => setIsOpenAmenityDropdown(!isOpenAmenityDropdown)}
                 style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                   padding: '8px 16px',
                   borderRadius: '12px',
                   border: selectedAmenities.length > 0 ? '2px solid #0ea5e9' : '1px solid #cbd5e1',
@@ -134,19 +132,94 @@ export default function BookingLayout() {
                   color: selectedAmenities.length > 0 ? '#0284c7' : '#334155',
                   fontWeight: selectedAmenities.length > 0 ? 'bold' : '600',
                   cursor: 'pointer',
-                  outline: 'none',
                   fontSize: '0.88rem',
                   boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                   transition: 'all 0.2s',
                   fontFamily: 'Inter, sans-serif'
                 }}
               >
-                <option value="all">🌟 Tất cả tiện nghi</option>
-                <option value="cloud_view">☁️ View Săn Mây</option>
-                <option value="parking">🅿️ Có bãi đỗ xe</option>
-                <option value="wifi">📶 Wifi mạnh</option>
-                <option value="247">🌙 Mở cửa đêm 4h sáng</option>
-              </select>
+                <span>⚡ Tiện nghi {selectedAmenities.length > 0 ? `(${selectedAmenities.length})` : ''}</span>
+                <span style={{ fontSize: '0.7rem' }}>{isOpenAmenityDropdown ? '▲' : '▼'}</span>
+              </button>
+
+              {isOpenAmenityDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  width: '240px',
+                  background: 'white',
+                  borderRadius: '16px',
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 12px 30px rgba(0,0,0,0.15)',
+                  padding: '12px',
+                  zIndex: 300,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #f1f5f9', paddingBottom: '6px', marginBottom: '2px' }}>
+                    ☑️ Chọn nhiều tiện nghi:
+                  </div>
+                  {[
+                    { id: 'cloud_view', label: '☁️ View Săn Mây' },
+                    { id: 'parking', label: '🅿️ Có bãi đỗ xe' },
+                    { id: 'wifi', label: '📶 Wifi mạnh' },
+                    { id: '247', label: '🌙 Mở cửa đêm 4h sáng' }
+                  ].map(item => {
+                    const checked = selectedAmenities.includes(item.id);
+                    return (
+                      <label
+                        key={item.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleAmenity(item.id);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          background: checked ? '#f0f9ff' : 'transparent',
+                          color: checked ? '#0284c7' : '#334155',
+                          fontWeight: checked ? 700 : 500,
+                          cursor: 'pointer',
+                          fontSize: '0.86rem',
+                          transition: 'background 0.15s'
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {}}
+                          style={{ cursor: 'pointer', accentColor: '#0ea5e9', width: '16px', height: '16px' }}
+                        />
+                        <span>{item.label}</span>
+                      </label>
+                    );
+                  })}
+                  {selectedAmenities.length > 0 && (
+                    <button
+                      onClick={() => setSelectedAmenities([])}
+                      style={{
+                        marginTop: '4px',
+                        padding: '6px',
+                        border: 'none',
+                        background: '#fee2e2',
+                        color: '#dc2626',
+                        borderRadius: '6px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ✕ Bỏ chọn tất cả
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -161,6 +234,7 @@ export default function BookingLayout() {
           <BookingMap 
             places={displayPlaces}
             selectedPlace={selectedPlace}
+            targetSpot={{ lat: targetLat, lon: targetLon, name: targetName }}
           />
         </div>
       </div>

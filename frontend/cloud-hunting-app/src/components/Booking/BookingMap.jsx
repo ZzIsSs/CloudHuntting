@@ -19,6 +19,25 @@ const customIcon = L.icon({
   popupAnchor: [1, -34],
 });
 
+const redCenterIcon = L.divIcon({
+  className: 'custom-red-spot-pin',
+  html: `<div style="
+    background: linear-gradient(135deg, #ef4444, #991b1b);
+    width: 38px;
+    height: 38px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    border: 3px solid #ffffff;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  "><span style="transform: rotate(45deg); font-size: 18px;">🎯</span></div>`,
+  iconSize: [38, 38],
+  iconAnchor: [19, 38],
+  popupAnchor: [0, -38]
+});
+
 function MapFlyTo({ selectedPlace }) {
   const map = useMap();
   useEffect(() => {
@@ -29,9 +48,9 @@ function MapFlyTo({ selectedPlace }) {
   return null;
 }
 
-export default function BookingMap({ places = [], selectedPlace = null }) {
-  const defaultLat = 11.9404;
-  const defaultLon = 108.4583;
+export default function BookingMap({ places = [], selectedPlace = null, targetSpot = null }) {
+  const defaultLat = targetSpot?.lat || 11.9404;
+  const defaultLon = targetSpot?.lon || 108.4583;
 
   return (
     <div className={styles.mapSection}>
@@ -48,6 +67,24 @@ export default function BookingMap({ places = [], selectedPlace = null }) {
           />
           <SovereigntyOverlay />
           <MapFlyTo selectedPlace={selectedPlace} />
+
+          {/* Ghim Đỏ: Trung Tâm Khảo Sát Săn Mây */}
+          {targetSpot?.lat && targetSpot?.lon && (
+            <Marker
+              position={[targetSpot.lat, targetSpot.lon]}
+              icon={redCenterIcon}
+              zIndexOffset={1000}
+            >
+              <Popup autoPan={false}>
+                <div style={{ fontFamily: 'Inter, sans-serif', textAlign: 'center', padding: '2px' }}>
+                  <div style={{ background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800, display: 'inline-block', marginBottom: '4px' }}>
+                    🚩 TRUNG TÂM KHẢO SÁT
+                  </div>
+                  <h4 style={{ margin: '0', color: '#b91c1c', fontSize: '1.05rem', fontWeight: 800 }}>{targetSpot.name}</h4>
+                </div>
+              </Popup>
+            </Marker>
+          )}
 
           {places.map((place) => {
             if (!place.lat || !place.lon) return null;
