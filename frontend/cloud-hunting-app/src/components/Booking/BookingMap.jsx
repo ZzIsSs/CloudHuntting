@@ -48,6 +48,42 @@ function MapFlyTo({ selectedPlace }) {
   return null;
 }
 
+function CenterSurveyButton({ targetSpot }) {
+  const map = useMap();
+  if (!targetSpot?.lat || !targetSpot?.lon) return null;
+
+  return (
+    <div className="leaflet-top leaflet-right" style={{ pointerEvents: 'auto', margin: '14px', zIndex: 1000 }}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          map.flyTo([targetSpot.lat, targetSpot.lon], 15, { duration: 1.2 });
+        }}
+        style={{
+          background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+          color: 'white',
+          border: '2px solid white',
+          padding: '8px 16px',
+          borderRadius: '20px',
+          fontWeight: 800,
+          fontSize: '0.85rem',
+          cursor: 'pointer',
+          boxShadow: '0 4px 15px rgba(220, 38, 38, 0.45)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          transition: 'all 0.2s',
+          fontFamily: 'Inter, sans-serif'
+        }}
+        title="Đưa bản đồ về nơi trung tâm đang khảo sát"
+      >
+        <span>🎯</span>
+        <span>Về trung tâm khảo sát</span>
+      </button>
+    </div>
+  );
+}
+
 export default function BookingMap({ places = [], selectedPlace = null, targetSpot = null }) {
   const defaultLat = targetSpot?.lat || 11.9404;
   const defaultLon = targetSpot?.lon || 108.4583;
@@ -67,6 +103,7 @@ export default function BookingMap({ places = [], selectedPlace = null, targetSp
           />
           <SovereigntyOverlay />
           <MapFlyTo selectedPlace={selectedPlace} />
+          <CenterSurveyButton targetSpot={targetSpot} />
 
           {/* Ghim Đỏ: Trung Tâm Khảo Sát Săn Mây */}
           {targetSpot?.lat && targetSpot?.lon && (

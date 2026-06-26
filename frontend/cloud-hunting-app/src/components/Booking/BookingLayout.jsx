@@ -94,13 +94,21 @@ export default function BookingLayout() {
       <TopRightNav onLogout={handleLogout} />
 
       <div className={styles.bookingLayout} style={{ position: 'absolute', top: '55%', left: '50%', transform: 'translate(-50%, -50%)', width: '95%', maxWidth: '1400px', height: '85vh', zIndex: 10, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div className={styles.header} style={{ flexShrink: 0 }}>
-          <div className={styles.headerTitle}>
-            <button className={styles.backBtn} onClick={() => navigate(-1)}>←</button>
-            <h1>🌟 Tiện ích quanh {targetName}</h1>
+        <div className={styles.header} style={{ flexShrink: 0, position: 'relative', zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '20px 30px 16px 30px' }}>
+          <div style={{ width: '100%', position: 'relative', textAlign: 'center' }}>
+            <button 
+              className={styles.backBtn} 
+              onClick={() => navigate(-1)}
+              style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', margin: 0 }}
+            >
+              ← Quay lại
+            </button>
+            <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>
+              🌟 Tiện ích quanh {targetName}
+            </h1>
           </div>
 
-          <div className={styles.headerActions} style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+          <div className={styles.headerActions} style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
             <button 
               className={`${styles.filterBtn} ${activeCategory === 'all' ? styles.active : ''}`}
               onClick={() => { setActiveCategory('all'); setSelectedPlace(null); }}
