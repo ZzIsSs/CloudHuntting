@@ -50,7 +50,6 @@ app.include_router(router)
 # --- Static Files: Serve frontend assets & SPA ---
 frontend_dir = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "cloud-hunting-app", "dist")
 frontend_dir = os.path.abspath(frontend_dir)
-
 if os.path.isdir(frontend_dir):
     for subFolder in ["assets", "images", "sound", "pic"]:
         sub_path = os.path.join(frontend_dir, subFolder)
@@ -64,14 +63,14 @@ if os.path.isdir(pic_dir):
     app.mount("/project_pic", StaticFiles(directory=pic_dir), name="project_pic")
 
 @app.get("/app", include_in_schema=False)
-async def serve_frontend_spa_no_slash():
+async def serve_frontend_spa_app_root():
     index_path = os.path.join(frontend_dir, "index.html")
     if os.path.isfile(index_path):
         return FileResponse(index_path)
     return {"error": "index.html not found"}
 
 @app.get("/app/{path:path}", include_in_schema=False)
-async def serve_frontend_spa(path: str):
+async def serve_frontend_spa_app(path: str):
     if not os.path.isdir(frontend_dir):
         return {"error": "Frontend dist directory not found"}
     file_path = os.path.join(frontend_dir, path)
@@ -82,18 +81,24 @@ async def serve_frontend_spa(path: str):
         return FileResponse(index_path)
     return {"error": "index.html not found"}
 
-@app.get("/{filename}", include_in_schema=False)
-async def serve_root_files(filename: str):
-    file_path = os.path.join(frontend_dir, filename)
-    if os.path.isfile(file_path):
-        return FileResponse(file_path)
-    return RedirectResponse(url="/app")
-
-# --- Root redirect ---
 @app.get("/", include_in_schema=False)
-def root():
-    return RedirectResponse(url="/app")
+async def serve_frontend_root():
+    index_path = os.path.join(frontend_dir, "index.html")
+    if os.path.isfile(index_path):
+        return FileResponse(index_path)
+    return {"error": "index.html not found"}
 
+@app.get("/{path:path}", include_in_schema=False)
+async def serve_root_catch_all(path: str):
+    if not os.path.isdir(frontend_dir):
+        return {"error": "Frontend dist directory not found"}
+    file_path = os.path.join(frontend_dir, path)
+    if path and os.path.isfile(file_path):
+        return FileResponse(file_path)
+    index_path = os.path.join(frontend_dir, "index.html")
+    if os.path.isfile(index_path):
+        return FileResponse(index_path)
+    return {"error": "index.html not found"}
 # --- Startup event ---
 @app.on_event("startup")
 async def startup_event():
@@ -103,7 +108,7 @@ async def startup_event():
     for key, svc in SERVICES.items():
         print(f"  {svc['prefix']:<14} -> {svc['url']}")
     print("-" * 58)
-    print(f"  Frontend: http://{GATEWAY_HOST}:{GATEWAY_PORT}/app/")
+    print(f"  Frontend: http://{GATEWAY_HOST}:{GATEWAY_PORT}/")
     print(f"  Gateway:  http://{GATEWAY_HOST}:{GATEWAY_PORT}")
     print(f"  Swagger:  http://{GATEWAY_HOST}:{GATEWAY_PORT}/docs")
     print("=" * 58)
