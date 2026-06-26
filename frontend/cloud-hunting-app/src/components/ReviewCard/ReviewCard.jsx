@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import styles from './ReviewCard.module.css';
-import { generateTourId, fetchReviews, postReview, editReview, likeReview, unlikeReview } from '../../bridge/s4_api';
+import { generateTourId, fetchReviews, postReview, editReview, deleteReview, likeReview, unlikeReview } from '../../bridge/s4_api';
 import NearbyUtilitiesPanel from '../NearbyUtilities/NearbyUtilitiesPanel';
+import DeleteConfirmModal from '../DeleteConfirmModal/DeleteConfirmModal';
 
 
 function getStarsText(rating) {
@@ -68,6 +69,10 @@ export default function ReviewCard() {
 
   // Edit states
   const [editingReviewId, setEditingReviewId] = useState(null);
+
+  // Delete states
+  const [deletingReviewId, setDeletingReviewId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Like states
   const [likedReviews, setLikedReviews] = useState(() => {
@@ -190,6 +195,24 @@ export default function ReviewCard() {
       alert(err.message || 'Lỗi cập nhật đánh giá');
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteClick = (review_id) => {
+    setDeletingReviewId(review_id);
+  };
+
+  const confirmDeleteReview = async () => {
+    if (deletingReviewId === null) return;
+    setIsDeleting(true);
+    try {
+      await deleteReview(deletingReviewId);
+      setDeletingReviewId(null);
+      await loadReviews();
+    } catch (err) {
+      alert(err.message || 'Lỗi xóa đánh giá');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -337,12 +360,20 @@ export default function ReviewCard() {
                     <span className={styles.userId}>
                       {rv.display_name || rv.username || `User #${rv.user_id}`}
                       {rv.user_id === currentUserId && (
-                        <span 
-                          style={{ marginLeft: '10px', fontSize: '12px', color: '#0284c7', cursor: 'pointer', fontWeight: 'normal' }}
-                          onClick={() => handleEditClick(rv)}
-                        >
-                          [Sửa]
-                        </span>
+                        <>
+                          <span 
+                            style={{ marginLeft: '10px', fontSize: '12px', color: '#0284c7', cursor: 'pointer', fontWeight: 'normal' }}
+                            onClick={() => handleEditClick(rv)}
+                          >
+                            [Sửa]
+                          </span>
+                          <span 
+                            style={{ marginLeft: '8px', fontSize: '12px', color: '#ef4444', cursor: 'pointer', fontWeight: 'normal' }}
+                            onClick={() => handleDeleteClick(rv.id)}
+                          >
+                            [Xóa]
+                          </span>
+                        </>
                       )}
                     </span>
                     <span className={styles.rating}>
@@ -516,6 +547,14 @@ export default function ReviewCard() {
 
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmModal
+        isOpen={deletingReviewId !== null}
+        onClose={() => setDeletingReviewId(null)}
+        onConfirm={confirmDeleteReview}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

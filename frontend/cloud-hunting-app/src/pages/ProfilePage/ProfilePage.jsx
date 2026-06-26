@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopRightNav from '../../components/TopRightNav/TopRightNav';
-import { fetchMyReviews } from '../../bridge/s4_api';
+import { fetchMyReviews, deleteReview } from '../../bridge/s4_api';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import styles from './ProfilePage.module.css';
 
 export default function ProfilePage() {
@@ -10,6 +11,8 @@ export default function ProfilePage() {
   const [email, setEmail] = useState('Chưa cập nhật email');
   const [avatarInitial, setAvatarInitial] = useState('U');
   const [myReviews, setMyReviews] = useState([]);
+  const [deletingReviewId, setDeletingReviewId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -55,6 +58,24 @@ export default function ProfilePage() {
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     navigate('/');
+  };
+
+  const handleDeleteReview = (review_id) => {
+    setDeletingReviewId(review_id);
+  };
+
+  const confirmDeleteReview = async () => {
+    if (deletingReviewId === null) return;
+    setIsDeleting(true);
+    try {
+      await deleteReview(deletingReviewId);
+      setMyReviews(prev => prev.filter(r => r.id !== deletingReviewId));
+      setDeletingReviewId(null);
+    } catch (err) {
+      alert(err.message || 'Lỗi xóa đánh giá');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -114,8 +135,16 @@ export default function ProfilePage() {
                     <div className={styles['post-location']}>
                       📍 {rv.location_name || 'Đánh giá Săn Mây'}
                     </div>
-                    <div className={styles['post-time']}>
-                      {rv.created_at ? new Date(rv.created_at.endsWith('Z') ? rv.created_at : rv.created_at + 'Z').toLocaleString('vi-VN') : 'Vừa xong'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div className={styles['post-time']}>
+                        {rv.created_at ? new Date(rv.created_at.endsWith('Z') ? rv.created_at : rv.created_at + 'Z').toLocaleString('vi-VN') : 'Vừa xong'}
+                      </div>
+                      <span
+                        style={{ fontSize: '12px', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}
+                        onClick={() => handleDeleteReview(rv.id)}
+                      >
+                        [Xóa]
+                      </span>
                     </div>
                   </div>
                   <div className={styles['post-content']}>
@@ -133,7 +162,12 @@ export default function ProfilePage() {
         </div>
       </div>
 
-
+      <DeleteConfirmModal
+        isOpen={deletingReviewId !== null}
+        onClose={() => setDeletingReviewId(null)}
+        onConfirm={confirmDeleteReview}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

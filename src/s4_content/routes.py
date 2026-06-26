@@ -394,10 +394,6 @@ def update_review(
     if review_in.image_url is not None:
         review.image_url = review_in.image_url
         
-    # Reset kiểm duyệt nếu không phải Admin/Mod chỉnh sửa
-    if current_user.role not in [RoleEnum.admin, RoleEnum.moderator]:
-        review.is_approved = False
-        
     db.commit()
     db.refresh(review)
     return review
@@ -462,9 +458,9 @@ def delete_review(
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
         
-    # CHỈ ADMIN mới có quyền xóa Review
-    if current_user.role != RoleEnum.admin:
-        raise HTTPException(status_code=403, detail="Only admins can delete reviews")
+    # Tác giả hoặc Admin có quyền xóa Review
+    if current_user.role != RoleEnum.admin and review.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not enough permissions to delete this review")
         
     # Xóa các comment liên quan trước
     db.query(models.ReviewComment).filter(models.ReviewComment.review_id == review_id).delete()
