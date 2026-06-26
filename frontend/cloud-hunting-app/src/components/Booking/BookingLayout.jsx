@@ -92,7 +92,7 @@ export default function BookingLayout() {
       <CloudGameLayer />
       <TopRightNav onLogout={handleLogout} />
 
-      <div className={styles.bookingLayout} style={{ position: 'absolute', top: '90px', bottom: '20px', height: 'calc(100vh - 110px)', zIndex: 10, width: '96%', maxWidth: '1380px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className={styles.bookingLayout} style={{ position: 'absolute', top: '55%', left: '50%', transform: 'translate(-50%, -50%)', width: '95%', maxWidth: '1400px', height: '85vh', zIndex: 10, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className={styles.header} style={{ flexShrink: 0 }}>
           <div className={styles.headerTitle}>
             <button className={styles.backBtn} onClick={() => navigate(-1)}>←</button>
