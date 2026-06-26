@@ -92,8 +92,8 @@ export default function BookingLayout() {
       <CloudGameLayer />
       <TopRightNav onLogout={handleLogout} />
 
-      <div className={styles.bookingLayout} style={{ position: 'absolute', top: '85px', height: 'calc(100vh - 105px)', zIndex: 100, width: '95%', maxWidth: '1350px' }}>
-        <div className={styles.header}>
+      <div className={styles.bookingLayout} style={{ position: 'absolute', top: '90px', bottom: '20px', height: 'calc(100vh - 110px)', zIndex: 10, width: '96%', maxWidth: '1380px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className={styles.header} style={{ flexShrink: 0 }}>
           <div className={styles.headerTitle}>
             <button className={styles.backBtn} onClick={() => navigate(-1)}>←</button>
             <h1>🌟 Tiện ích quanh {targetName}</h1>
@@ -147,7 +147,7 @@ export default function BookingLayout() {
           </div>
         </div>
 
-        <div className={styles.bodyContent}>
+        <div className={styles.bodyContent} style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
           <PlacesList 
             places={displayPlaces} 
             loading={loading} 
