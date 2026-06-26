@@ -67,11 +67,14 @@ export default function BookingLayout() {
   };
 
   const [selectedPlace, setSelectedPlace] = useState(null);
+  const [selectedPriceLevel, setSelectedPriceLevel] = useState('all');
 
-  // Lọc ra danh sách gửi xuống PlacesList theo tab đang chọn
-  const displayPlaces = activeCategory === 'all' 
-    ? allPlaces 
-    : allPlaces.filter(p => p.category === activeCategory);
+  // Lọc ra danh sách gửi xuống PlacesList theo tab và phân khúc giá đang chọn
+  const displayPlaces = allPlaces.filter(p => {
+    if (activeCategory !== 'all' && p.category !== activeCategory) return false;
+    if (selectedPriceLevel !== 'all' && Number(p.price_level ?? 2) !== Number(selectedPriceLevel)) return false;
+    return true;
+  });
 
   return (
     <div className={styles.bookingLayout}>
@@ -126,6 +129,40 @@ export default function BookingLayout() {
               {selectedAmenities.includes(chip.id) ? '☑️ ' : '☐ '}{chip.label}
             </button>
           ))}
+        </div>
+
+        {/* Hàng lọc theo Phân khúc giá */}
+        <div style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: '600', color: '#059669', alignSelf: 'center' }}>💰 Phân khúc giá:</span>
+          {[
+            { id: 'all', label: '🌟 Tất cả' },
+            { id: 0, label: '🎁 Miễn phí' },
+            { id: 1, label: '🪙 Tiết kiệm' },
+            { id: 2, label: '💵 Bình dân' },
+            { id: 3, label: '💳 Trung lưu' },
+            { id: 4, label: '👑 Sang trọng' }
+          ].map(price => {
+            const isActive = selectedPriceLevel === price.id;
+            return (
+              <button
+                key={price.id}
+                onClick={() => { setSelectedPriceLevel(price.id); setSelectedPlace(null); }}
+                style={{
+                  padding: '5px 13px',
+                  borderRadius: '16px',
+                  border: isActive ? '2px solid #059669' : '1px solid #d1d5db',
+                  background: isActive ? '#ecfdf5' : '#f9fafb',
+                  color: isActive ? '#047857' : '#4b5563',
+                  fontWeight: isActive ? 'bold' : 'normal',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '0.82rem'
+                }}
+              >
+                {price.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
