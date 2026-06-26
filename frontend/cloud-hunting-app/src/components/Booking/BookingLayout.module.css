@@ -16,11 +16,13 @@
 }
 
 .header {
-    padding: 25px 40px;
+    padding: 16px 30px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.6);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
     background: rgba(255, 255, 255, 0.3);
 }
 

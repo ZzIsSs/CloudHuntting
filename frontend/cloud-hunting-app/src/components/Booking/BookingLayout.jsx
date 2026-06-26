@@ -99,7 +99,7 @@ export default function BookingLayout() {
             <h1>🌟 Tiện ích quanh {targetName}</h1>
           </div>
 
-          <div className={styles.headerActions} style={{marginTop: '15px'}}>
+          <div className={styles.headerActions} style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
             <button 
               className={`${styles.filterBtn} ${activeCategory === 'all' ? styles.active : ''}`}
               onClick={() => { setActiveCategory('all'); setSelectedPlace(null); }}
@@ -115,35 +115,39 @@ export default function BookingLayout() {
                 {getCatLabel(cat)} ({liveCounts[cat] || 0})
               </button>
             ))}
-          </div>
-          
-          {/* Hàng lọc Tiện nghi nhanh */}
-          <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: '600', color: '#334155', alignSelf: 'center' }}>⚡ Lọc tiện nghi:</span>
-            {[
-              { id: 'cloud_view', label: '☁️ View Săn Mây' },
-              { id: 'parking', label: '🅿️ Có bãi đỗ xe' },
-              { id: 'wifi', label: '📶 Wifi mạnh' },
-              { id: '247', label: '🌙 Mở cửa đêm 4h sáng' }
-            ].map(chip => (
-              <button
-                key={chip.id}
-                onClick={() => toggleAmenity(chip.id)}
+
+            {/* Hộp chọn lọc Tiện nghi dạng Dropdown gọn gàng */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '6px' }}>
+              <span style={{ fontWeight: '600', color: '#0284c7', fontSize: '0.9rem' }}>⚡ Tiện nghi:</span>
+              <select
+                value={selectedAmenities[0] || 'all'}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedAmenities(val === 'all' ? [] : [val]);
+                  setSelectedPlace(null);
+                }}
                 style={{
-                  padding: '6px 14px',
-                  borderRadius: '20px',
-                  border: selectedAmenities.includes(chip.id) ? '2px solid #0ea5e9' : '1px solid #cbd5e1',
-                  background: selectedAmenities.includes(chip.id) ? '#e0f2fe' : 'white',
-                  color: selectedAmenities.includes(chip.id) ? '#0284c7' : '#475569',
-                  fontWeight: selectedAmenities.includes(chip.id) ? 'bold' : 'normal',
+                  padding: '8px 16px',
+                  borderRadius: '12px',
+                  border: selectedAmenities.length > 0 ? '2px solid #0ea5e9' : '1px solid #cbd5e1',
+                  background: selectedAmenities.length > 0 ? '#e0f2fe' : '#ffffff',
+                  color: selectedAmenities.length > 0 ? '#0284c7' : '#334155',
+                  fontWeight: selectedAmenities.length > 0 ? 'bold' : '600',
                   cursor: 'pointer',
+                  outline: 'none',
+                  fontSize: '0.88rem',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                   transition: 'all 0.2s',
-                  fontSize: '0.85rem'
+                  fontFamily: 'Inter, sans-serif'
                 }}
               >
-                {selectedAmenities.includes(chip.id) ? '☑️ ' : '☐ '}{chip.label}
-              </button>
-            ))}
+                <option value="all">🌟 Tất cả tiện nghi</option>
+                <option value="cloud_view">☁️ View Săn Mây</option>
+                <option value="parking">🅿️ Có bãi đỗ xe</option>
+                <option value="wifi">📶 Wifi mạnh</option>
+                <option value="247">🌙 Mở cửa đêm 4h sáng</option>
+              </select>
+            </div>
           </div>
         </div>
 
