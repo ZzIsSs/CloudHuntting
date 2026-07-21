@@ -148,3 +148,55 @@ export async function deleteReview(review_id) {
 
   return true;
 }
+
+export async function fetchTickets() {
+  const token = localStorage.getItem('accessToken');
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(`${BASE_URL}/content/tickets`, { headers });
+  if (!response.ok) throw new Error('Không thể tải danh sách tickets');
+  return response.json();
+}
+
+export async function postTicket(title, description) {
+  const token = localStorage.getItem('accessToken');
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(`${BASE_URL}/content/tickets`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ title, description })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Không thể tạo ticket');
+  }
+
+  return response.json();
+}
+
+export async function updateTicketStatus(ticket_id, status) {
+  const token = localStorage.getItem('accessToken');
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(`${BASE_URL}/content/tickets/${ticket_id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ status })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || 'Không thể cập nhật trạng thái');
+  }
+
+  return response.json();
+}

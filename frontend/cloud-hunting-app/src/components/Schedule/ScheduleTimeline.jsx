@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styles from './ScheduleTimeline.module.css';
+import { getSmartStartTime } from '../../utils/timeUtils';
 
 export default function ScheduleTimeline() {
   const [scheduleData, setScheduleData] = useState([]);
@@ -14,7 +15,7 @@ export default function ScheduleTimeline() {
           ...(token && { 'Authorization': `Bearer ${token}` })
         };
         const body = JSON.stringify({
-          start_time: "04:00",
+          start_time: getSmartStartTime(),
           start_location: "Chợ Đà Lạt",
           max_distance_km: 30.0,
           travel_style: "Sống ảo nhẹ nhàng",

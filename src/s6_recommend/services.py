@@ -187,7 +187,7 @@ def generate_itinerary(req: UserPreferenceRequest, best_locations: list[Location
         try:
             start_dt = datetime.strptime(req.start_time, "%H:%M")
         except:
-            start_dt = datetime.strptime("04:00", "%H:%M")
+            start_dt = datetime.now().replace(second=0, microsecond=0)
         
         coffee_dt = start_dt + timedelta(hours=3)
         
@@ -315,7 +315,7 @@ def generate_itinerary(req: UserPreferenceRequest, best_locations: list[Location
         try:
             start_dt = datetime.strptime(req.start_time, "%H:%M")
         except:
-            start_dt = datetime.strptime("04:00", "%H:%M")
+            start_dt = datetime.now().replace(second=0, microsecond=0)
         arrive_parking_dt = start_dt + timedelta(minutes=travel_time_mins)
         arrive_peak_dt = arrive_parking_dt + timedelta(minutes=trekking_mins)
         sunrise_dt = arrive_peak_dt + timedelta(minutes=30)

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styles from './ScheduleLayout.module.css';
+import { getSmartStartTime } from '../../utils/timeUtils';
 
 export default function ScheduleLayout() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export default function ScheduleLayout() {
       };
       const payload = {
           user_id: localStorage.getItem('currentUser') || "guest",
-          start_time: "04:00",
+          start_time: getSmartStartTime(location.state?.timeOffset || 0),
           start_location: "Trung tâm",
           max_distance_km: 30.0,
           travel_style: "Sống ảo nhẹ nhàng",

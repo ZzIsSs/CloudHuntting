@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import CloudGameLayer from '../CloudGameLayer/CloudGameLayer';
 import TopRightNav from '../TopRightNav/TopRightNav';
 import styles from './SupportTickets.module.css';
+import { postTicket } from '../../bridge/s4_api';
 
 const ISSUE_CATEGORIES = [
   { id: 'bug', label: '🐛 Lỗi ứng dụng', desc: 'Ứng dụng bị crash, hiển thị sai, không hoạt động' },
@@ -32,10 +33,26 @@ export default function SupportTickets() {
       alert('Vui lòng điền đầy đủ thông tin!');
       return;
     }
+    if (title.trim().length < 5) {
+      alert('Tiêu đề phải chứa ít nhất 5 ký tự!');
+      return;
+    }
+    if (description.trim().length < 10) {
+      alert('Mô tả phải chứa ít nhất 10 ký tự!');
+      return;
+    }
+
     setSending(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setSending(false);
-    setSubmitted(true);
+    try {
+      const categoryLabel = ISSUE_CATEGORIES.find(c => c.id === category)?.label || category;
+      const fullDesc = `[${categoryLabel}]\n${description.trim()}` + (email ? `\n\nEmail liên hệ: ${email}` : '');
+      await postTicket(title.trim(), fullDesc);
+      setSubmitted(true);
+    } catch (err) {
+      alert('Lỗi khi gửi báo cáo: ' + err.message);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleReset = () => {

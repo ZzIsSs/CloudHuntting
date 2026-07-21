@@ -56,3 +56,9 @@ export async function fetchNearbyUtilities(lat, lon, category = null, amenities 
 
   return response.json();
 }
+
+export async function fetchCloudSpots() {
+  const response = await fetch(`${BASE_URL}/api/v1/spots`, { method: 'GET' });
+  if (!response.ok) throw new Error('Không thể tải danh sách địa điểm săn mây');
+  return response.json();
+}

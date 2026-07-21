@@ -98,8 +98,27 @@ def predict_cloud_probability(weather_window: List[Dict[str, Any]]) -> Tuple[flo
             "probability": round(float(prob_class_1[i]), 2)
         })
     
-    # Tìm max
-    max_idx = prob_class_1.argmax()
+    # Tìm max — chỉ xét các giờ chưa qua (từ hiện tại trở đi)
+    from datetime import datetime, timezone, timedelta
+    vn_tz = timezone(timedelta(hours=7))
+    now = datetime.now(vn_tz).replace(tzinfo=None)
+    
+    # Tạo bản sao xác suất, loại giờ đã qua khỏi cuộc đua tìm best_time
+    future_probs = prob_class_1.copy()
+    for i in range(len(future_probs)):
+        try:
+            dt = pd.to_datetime(times[i], format="%H:%M %d/%m").replace(year=now.year)
+            if dt < now:
+                future_probs[i] = -1  # Loại khỏi cuộc đua
+        except Exception:
+            pass  # Giữ nguyên nếu không parse được
+    
+    # Nếu còn giờ tương lai thì lấy max từ đó, ngược lại fallback về toàn bộ
+    if future_probs.max() >= 0:
+        max_idx = future_probs.argmax()
+    else:
+        max_idx = prob_class_1.argmax()
+    
     max_prob = prob_class_1[max_idx]
     best_time = times[max_idx]
     

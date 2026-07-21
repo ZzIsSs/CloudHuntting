@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import styles from './AiScheduleModal.module.css';
 import { recommendItinerary } from '../../bridge/s6_api';
+import { getSmartStartTime } from '../../utils/timeUtils';
 
-export default function AiScheduleModal({ onClose, locName, lat, lon }) {
-  const [timeAvailable, setTimeAvailable] = useState('04:00');
+export default function AiScheduleModal({ onClose, locName, lat, lon, timeOffset = 0 }) {
+  const [timeAvailable, setTimeAvailable] = useState(getSmartStartTime(timeOffset));
   const [vehicle, setVehicle] = useState('Xe máy');
   const [style, setStyle] = useState('Sống ảo');
   const [vibe, setVibe] = useState('Cặp đôi');

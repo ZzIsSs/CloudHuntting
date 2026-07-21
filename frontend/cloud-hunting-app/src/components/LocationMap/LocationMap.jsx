@@ -1,18 +1,14 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import styles from './LocationMap.module.css';
 import SovereigntyOverlay from './SovereigntyOverlay';
+import { fetchCloudSpots } from '../../bridge/s2_api';
 
-const fallbackData = [
-  { location_name: 'Đồi chè Cầu Đất (11.8942, 108.5303)', probability: 95.5 },
-  { location_name: 'Đỉnh Hòn Bồ (11.9688, 108.4811)', probability: 88.0 },
-  { location_name: 'Đồi Đa Phú (11.9863, 108.4325)', probability: 82.5 },
-  { location_name: 'Đồi Thiên Phúc Đức (11.9721, 108.4377)', probability: 75.0 },
-  { location_name: 'Trại Mát (11.9443, 108.4975)', probability: 68.0 },
-];
+// Bỏ fallbackData cứng, sẽ lấy từ API
+
 
 // Parse coordinates from location_name string OR use raw lat/lon if available
 function parseLocation(loc) {
@@ -77,10 +73,26 @@ export default function LocationMap({ data }) {
   const navigate = useNavigate();
   const location = useLocation();
   const hasSearched = !!location.state?.cloudData;
-  const items = data && data.length > 0 ? data : (hasSearched ? [] : fallbackData);
+  const [defaultSpots, setDefaultSpots] = useState([]);
+
+  useEffect(() => {
+    if (!hasSearched) {
+      fetchCloudSpots().then(spots => {
+        const formatted = spots.map(s => ({
+          location_name: s.name,
+          lat: s.lat,
+          lon: s.lon,
+          probability: 0 // Default spots
+        }));
+        setDefaultSpots(formatted);
+      }).catch(console.error);
+    }
+  }, [hasSearched]);
+
+  const items = data && data.length > 0 ? data : (hasSearched ? [] : defaultSpots);
 
   // Sort by probability descending for ranking
-  const sorted = [...items].sort((a, b) => b.probability - a.probability);
+  const sorted = [...items].sort((a, b) => (b.probability || 0) - (a.probability || 0));
   const parsed = sorted.map(parseLocation).filter(Boolean);
   const positions = parsed.map((p) => [p.lat, p.lng]);
 

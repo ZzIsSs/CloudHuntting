@@ -4,6 +4,7 @@ import styles from './ReviewCard.module.css';
 import { generateTourId, fetchReviews, postReview, editReview, deleteReview, likeReview, unlikeReview } from '../../bridge/s4_api';
 import NearbyUtilitiesPanel from '../NearbyUtilities/NearbyUtilitiesPanel';
 import DeleteConfirmModal from '../DeleteConfirmModal/DeleteConfirmModal';
+import { getSmartStartTime } from '../../utils/timeUtils';
 
 
 function getStarsText(rating) {
@@ -242,7 +243,7 @@ export default function ReviewCard() {
       };
       const payload = {
           user_id: currentUserId ? String(currentUserId) : "guest",
-          start_time: "04:00",
+          start_time: getSmartStartTime(location.state?.timeOffset || 0),
           start_location: "Trung tâm",
           max_distance_km: 30.0,
           travel_style: "Sống ảo nhẹ nhàng",

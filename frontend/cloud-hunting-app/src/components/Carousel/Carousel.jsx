@@ -129,7 +129,7 @@ export default function Carousel({ data }) {
                 </div>
                 {item.best_time && (
                   <div style={{ fontSize: '0.85rem', color: '#0369a1', marginTop: '4px', fontWeight: 'bold', background: '#e0f2fe', padding: '2px 8px', borderRadius: '12px', display: 'inline-block' }}>
-                    ⏰ Giờ đẹp: {item.best_time.includes('T') ? new Date(item.best_time).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : item.best_time}
+                    ⏰ Giờ đẹp: {item.best_time.includes('T') ? new Date(item.best_time).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : item.best_time.split(' ')[0]}
                   </div>
                 )}
               </div>
