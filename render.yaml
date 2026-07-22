@@ -7,6 +7,7 @@ services:
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: bash render_start.sh
+    healthCheckPath: /health
     envVars:
       - key: JWT_SECRET
         generateValue: true

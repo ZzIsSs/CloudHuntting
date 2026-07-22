@@ -62,6 +62,11 @@ pic_dir = os.path.abspath(pic_dir)
 if os.path.isdir(pic_dir):
     app.mount("/project_pic", StaticFiles(directory=pic_dir), name="project_pic")
 
+@app.get("/health", include_in_schema=False)
+@app.head("/health", include_in_schema=False)
+async def health_check():
+    return {"status": "ok", "message": "Gateway is running"}
+
 @app.get("/app", include_in_schema=False)
 async def serve_frontend_spa_app_root():
     index_path = os.path.join(frontend_dir, "index.html")
