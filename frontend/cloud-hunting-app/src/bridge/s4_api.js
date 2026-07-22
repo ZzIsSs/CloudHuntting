@@ -1,4 +1,4 @@
-const BASE_URL = 'http://127.0.0.1:8000';
+const BASE_URL = '';
 
 /**
  * Hàm băm (hash) một chuỗi thành một số nguyên dương (để dùng làm tour_id)
