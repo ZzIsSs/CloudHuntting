@@ -10,7 +10,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+# dist/ (Bỏ comment để push được lên GitHub phục vụ Render.com)
 downloads/
 eggs/
 .eggs/

@@ -8,10 +8,14 @@ echo "🚀 Dang khoi dong he thong CloudHunting..."
 
 # [Railway Persistent Volume] Tạo symbolic links để lưu trữ các file SQLite vào ổ đĩa /data
 # Việc này giúp dữ liệu không bị mất khi container khởi động lại trên Railway
-echo "  🔄 Setting up database volumes..."
-# ln -sf /data/app.db app.db
-# ln -sf /data/cloud_hunting.db cloud_hunting.db
-# ln -sf /data/s6_preferences.db s6_preferences.db
+if [ -d "/data" ]; then
+    echo "  🔄 Setting up database volumes..."
+    ln -sf /data/app.db app.db
+    ln -sf /data/cloud_hunting.db cloud_hunting.db
+    ln -sf /data/s6_preferences.db s6_preferences.db
+else
+    echo "  ⚠️ Running on Free Tier (No /data persistent volume detected). Using local SQLite."
+fi
 
 # Khoi dong cac service noi bo (chay ngam)
 uvicorn src.s3_auth.main:app --host 0.0.0.0 --port 8003 &
